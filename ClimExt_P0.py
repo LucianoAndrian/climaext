@@ -164,11 +164,8 @@ temp2 = temp2.drop('NHLandObs', axis=1)
 temp_darrigo = temp.append(temp2)
 
 # Mann-Jones
-temp_mj = pd.read_csv(data_dir + 'jonesmannrogfig4a.txt', sep='\s+',skiprows=8, skipfooter=2002, engine='python') # \s+ separador de más de 1 espacio
-temp_mj = temp_mj.replace(-99.99, np.nan)
+temp_mj = pd.read_csv(data_dir + 'mann2003b.txt', sep='\s+',skiprows=1857, skipfooter=5373, engine='python') # \s+ separador de más de 1 espacio
 
-temp_mj_sm= pd.read_csv(data_dir + 'jonesmannrogfig4a.txt', sep='\s+',skiprows=2011, engine='python') # \s+ separador de más de 1 espacio
-temp_mj_sm = temp_mj_sm.replace(-99.99, np.nan)
 #Moberg
 temp_moberg = pd.read_csv(data_dir + 'nhtemp-moberg2005.txt', sep='\s+',skiprows=92) # \s+ separador de más de 1 espacio
 
@@ -184,8 +181,7 @@ ax = fig.add_subplot(111)
 #moberg
 ax.plot(temp_moberg.loc[:,temp_moberg.columns[0]], temp_moberg.loc[:,temp_moberg.columns[1]], label='Moberg et al. 2005', linewidth=2, color='firebrick')
 #mj
-ax.plot(temp_mj.loc[:,temp_mj.columns[0]], temp_mj.loc[:,temp_mj.columns[1]], linewidth=1, alpha=0.2, color='dodgerblue')
-ax.plot(temp_mj_sm.loc[:,temp_mj_sm.columns[0]], temp_mj_sm.loc[:,temp_mj_sm.columns[1]], label='Mann & Jones 2003', linewidth=2,color='dodgerblue')
+ax.plot(temp_mj.loc[:,temp_mj.columns[0]], temp_mj.loc[:,temp_mj.columns[1]], linewidth=3, label = 'Mann & Jones 2003',  color='dodgerblue')
 #darrigo
 ax.plot(temp_darrigo.loc[:,temp_darrigo.columns[0]], temp_darrigo.loc[:,temp_darrigo.columns[1]], label="STD D'arrigo et al. 2006", linewidth=2, color='green')
 ax.plot(temp_darrigo.loc[:,temp_darrigo.columns[0]], temp_darrigo.loc[:,temp_darrigo.columns[2]], label="RCS D'arrigo et al. 2006", linewidth=2, color='lime')
@@ -196,7 +192,7 @@ ax.grid()
 ax.legend(loc='upper left')
 ax.set_ylim(-2,2)
 ax.set_ylabel("T' [ºC]")
-ax.set_ylabel('Años')
+ax.set_xlabel('Años')
 ax.axvspan(900, 1300, facecolor='red', alpha=0.3)
 ax.axvspan(1300, 1850, facecolor='blue', alpha=0.3)
 if save:
@@ -213,8 +209,7 @@ ax = fig.add_subplot(111)
 #moberg
 ax.plot(temp_moberg.loc[:,temp_moberg.columns[0]], temp_moberg.loc[:,temp_moberg.columns[1]], label='Moberg et al. 2005', linewidth=2, color='firebrick')
 #mj
-ax.plot(temp_mj.loc[:,temp_mj.columns[0]], temp_mj.loc[:,temp_mj.columns[1]], linewidth=1, alpha=0.2, color='dodgerblue')
-ax.plot(temp_mj_sm.loc[:,temp_mj_sm.columns[0]], temp_mj_sm.loc[:,temp_mj_sm.columns[1]], label='Mann & Jones 2003', linewidth=2,color='dodgerblue')
+ax.plot(temp_mj.loc[:,temp_mj.columns[0]], temp_mj.loc[:,temp_mj.columns[1]], linewidth=3, label = 'Mann & Jones 2003',  color='dodgerblue')
 #darrigo
 ax.plot(temp_darrigo.loc[:,temp_darrigo.columns[0]], temp_darrigo.loc[:,temp_darrigo.columns[1]], label="STD D'arrigo et al. 2006", linewidth=2, color='green')
 ax.plot(temp_darrigo.loc[:,temp_darrigo.columns[0]], temp_darrigo.loc[:,temp_darrigo.columns[2]], label="RCS D'arrigo et al. 2006", linewidth=2, color='lime')
@@ -226,7 +221,7 @@ ax.legend(loc='upper left')
 ax.set_ylim(-1.5,1.5)
 ax.set_xlim(850,2023)
 ax.set_ylabel("T' [ºC]")
-ax.set_ylabel('Años')
+ax.set_xlabel('Años')
 ax.axvspan(900, 1300, facecolor='red', alpha=0.3)
 ax.axvspan(1300, 1850, facecolor='blue', alpha=0.3)
 if save:
@@ -242,13 +237,13 @@ else:
 def selecteras(df, low, top):
     return df.loc[(df[df.columns[0]]>=low)&(df[df.columns[0]]<top)]
 
-temp_darrigo_cm = selecteras(temp_darrigo,1300,1851)
-temp_moberg_cm = selecteras(temp_moberg,1300,1851)
-temp_mj_sm_cm = selecteras(temp_mj_sm,1300,1851)
+temp_darrigo_cm = selecteras(temp_darrigo,900,1300)
+temp_moberg_cm = selecteras(temp_moberg,900,1300)
+temp_mj_sm_cm = selecteras(temp_mj,900,1300)
 
 temp_darrigo_xx = selecteras(temp_darrigo,1900,2001)
 temp_moberg_xx = selecteras(temp_moberg,1900,2001)
-temp_mj_sm_xx = selecteras(temp_mj_sm,1900,2001)
+temp_mj_sm_xx = selecteras(temp_mj,1900,2001)
 temp_cru_xx = selecteras(temp_cru,1900,2001)
 
 
@@ -269,7 +264,7 @@ def meantest(data1, data2):
     den = (((s1**2/n1)**2)/(n1-1)) + (((s2**2/n2)**2)/(n2-1))
     df = num/den
 
-    t_teorico = scipy.stats.t.ppf(0.95, df)
+    t_teorico = scipy.stats.t.ppf(0.975, df)
     return t, t_teorico, x1, x2, s1, s2, n1, n2
 
 t, t_teo, x1_darrigo1, x2_darrigo1, s1, s2, n1, n2 = meantest(
@@ -316,3 +311,97 @@ t, t_teo, x1, x2, s1, s2, n1, n2 = meantest(
 print('todo vs cru: ')
 print('t:' + str(t))
 print('t_teo:' + str(t_teo))
+#----------------------------------------------------------------------------------------------------------------------#
+# 4
+save=True
+dpi=300
+# "reconstrucciones de temperatura global y temperaturas hemisféricas de los últimos 2000 años." supongo las del ej.3
+# Darrigo
+#el archivo es una mierda:
+temp = pd.read_csv(data_dir + 'auxdarrigo2006.txt', sep='\s+', skipfooter=150, engine='python') # \s+ separador de más de 1 espacio
+temp2 = pd.read_csv(data_dir + 'auxdarrigo2006.txt', sep='\s+',skiprows= 1146, skipfooter=9, engine='python') # \s+ separador de más de 1 espacio
+# renombrar las columas de temp xq quedaron mal.
+temp.rename(columns={'RCSrecon':'borrar'}, inplace=True)
+temp.rename(columns={'STDrecon':'RCSrecon'}, inplace=True)
+temp.rename(columns={'NHLandObs':'STDrecon'}, inplace=True)
+temp = temp.drop('borrar', axis=1)
+
+temp2 = temp2.drop('NHLandObs', axis=1)
+
+temp_darrigo = temp.append(temp2)
+
+# Mann-Jones
+temp_mj = pd.read_csv(data_dir + 'mann2003b.txt', sep='\s+',skiprows=1857, skipfooter=5373, engine='python') # \s+ separador de más de 1 espacio
+#Moberg
+temp_moberg = pd.read_csv(data_dir + 'nhtemp-moberg2005.txt', sep='\s+',skiprows=92) # \s+ separador de más de 1 espacio
+#----------------------------------------------------------------------------------------------------------------------#
+#
+# Traufetter SO4
+so4_core1 = pd.read_csv(data_dir + 'aux_so4_core1.txt', sep='\s+') # \s+ separador de más de 1 espacio
+so4_core2 = pd.read_csv(data_dir + 'aux_so4_core2.txt', sep='\s+')
+
+#Mann et al. 2005
+mann_solar = pd.read_csv(data_dir + 'mann2005.txt', sep='\s+', skiprows=63, skipfooter=4047, engine='python')
+mann_volcanic = pd.read_csv(data_dir + 'mann2005.txt', sep='\s+', skiprows=1071, skipfooter=3039, engine='python')
+
+#plot so4 y forzante radiativo por erupcion volcanica
+fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+#so4
+core1 = ax.plot(so4_core1.loc[:,'Yeart'], so4_core1.loc[:,'SO4'], label='SO4 core1 \n Traufetter et. al 2007', linewidth=2, color='forestgreen')
+core2 = ax.plot(so4_core2.loc[:,'Yeart'], so4_core2.loc[:,'SO4'], label='SO4 core2 \n Traufetter', linewidth=2, color='dodgerblue')
+#forzante volcanico
+volc = ax2.plot(mann_volcanic.loc[:,'Year'], mann_volcanic.loc[:,'Volcanic'], label='Volcanic Forcing \n Mann et al. 2005', linewidth=6, color='firebrick', alpha=0.5)
+
+ax.set_ylim(0, 500)
+ax.set_ylabel('SO4 [ng/g')
+ax2.set_ylim(-12,6)
+ax2.set_ylabel('Volcanic Radiative Forcing, [W/m2]')
+ax.set_xlim(1000, 2000)
+ax.set_xlabel('Años')
+
+lns = core1 + core2 + volc
+labs = [l.get_label() for l in lns]
+ax.legend(lns, labs, loc='upper left')
+
+if save:
+    plt.savefig(out_dir + 'p0_ej4b.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
+
+
+
+#plot so4 y forzante radiativo por erupcion volcanica
+fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+#temperaturas HN
+#moberg
+temp1 = ax2.plot(temp_moberg.loc[:,temp_moberg.columns[0]], temp_moberg.loc[:,temp_moberg.columns[1]], label='Temp. Moberg et al. 2005', linewidth=1, color='forestgreen', alpha=0.8)
+#mj
+temp2 = ax2.plot(temp_mj.loc[:,temp_mj.columns[0]], temp_mj.loc[:,temp_mj.columns[1]], label='Temp. Mann & Jones 2003', linewidth=3,color='orange')
+#darrigo
+temp3 = ax2.plot(temp_darrigo.loc[:,temp_darrigo.columns[0]], temp_darrigo.loc[:,temp_darrigo.columns[1]], label="Temp. D'arrigo et al. 2006", linewidth=1, color='firebrick', alpha=0.8)
+#so4
+core1 = ax.plot(so4_core1.loc[:,'Yeart'], so4_core1.loc[:,'SO4'], label='SO4 core1 \n Traufetter et. al 2007', linewidth=2, color='k', zorder=10)
+
+ax.set_ylim(0, 500)
+ax.set_ylabel('SO4 [ng/g')
+ax2.set_ylim(-1.5,1.5)
+ax2.set_ylabel('NH Temp. [ºC]')
+#ax.set_xlim(1000, 2000)
+ax.set_xlabel('Años')
+
+lns = core1 + temp1 + temp2 + temp3
+labs = [l.get_label() for l in lns]
+ax.legend(lns, labs, loc='upper left')
+
+if save:
+    plt.savefig(out_dir + 'p0_ej4c.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
