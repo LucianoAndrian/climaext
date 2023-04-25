@@ -9,16 +9,22 @@ out_dir = '/home/luciano.andrian/doc/climaext/p1/'
 save = True
 dpi = 300
 #-----------------------------------------------------------------------------#
-def selecteras(df, low, top, n_col=0):
+def SelectAreas(df, low, top, n_col=0):
     return df.loc[(df[df.columns[n_col]]>=low)&(df[df.columns[n_col]]<=top)]
+
+def SelEstacion(ds, num_est):
+    return ds.where(ds.estacion==num_est, drop=True)
+
+def is_months(month, mmin, mmax):
+    return (month >= mmin) & (month <= mmax)
 #-----------------------------------------------------------------------------#
 # Region: PAMPA 30-40S 63-55W
 #-----------------------------------------------------------------------------#
 #Seleccion de estaciones
 estaciones = pd.read_csv(data_dir + 'Estaciones_lista.csv')
 
-aux = selecteras(estaciones, -63, -55) #en longitud
-est_sel = selecteras(aux, -40, -30, n_col=1) #en longitud
+aux = SelectAreas(estaciones, -63, -55) #en longitud
+est_sel = SelectAreas(aux, -40, -30, n_col=1) #en longitud
 #-----------------------------------------------------------------------------#
 #Seleccion de datos
 est_centro = pd.read_csv(data_dir + 'ncar-centro.txt', sep='\s+', header=None)
@@ -64,8 +70,7 @@ for e, i in zip(range(0, len(aux)), range(0, len(aux))):
     else:
         ds_f = aux_ds
 
-def SelEstacion(ds, num_est):
-    return ds.where(ds.estacion==num_est, drop=True)
+
 #-----------------------------------------------------------------------------#
 # las estaciones tienen distintos piodos observados
 # cual es el periodo en común mas largo?
@@ -119,7 +124,7 @@ df_30 = df.loc[(df['end']-df['start']>=30)]
 # (quedan de 11 años pero en estaciones de mas de 100 años. se pueden separar
 # los periodos de estudio)
 # quedan 15 estaciones
-df_30_11 = df_30.loc[(df['end']-df['start']>30) & (df['maxtimestep']<=11)]
+df_30_11 = df_30.loc[(df['end']-df['start']>30) & (df['maxtimestep']<=5)]
 
 # -----------------------------------------------------------------------------#
 # ploteo de las estaciones para ambas variables
@@ -185,31 +190,134 @@ pero el mas corto
 Con un total de 11 estaciones de 22 inciales se pueden estudiar los siquientes periodos:
 Periodos mas largos:
 Temp. 
+1970-2003 x12
 1961-2003 x11
 1951-2003 x10
 1931-2003 x6
 
 Prec.
+1970-2003 x12
 1961-2003 x11
 1951-2003 x10
 1931-2003 x6
 1888-2003 x3
 """
+# -----------------------------------------------------------------------------#
+# Calculando todo para los distintos periodos
+# -----------------------------------------------------------------------------#
+for start in [1970, 1961,1951, 1934]:
+    # Seleccion del periodo a partir del criterio aplicado
+    df_sel = df_30_11.loc[(df_30_11['end'] == 2003) &
+                          (df_30_11['start'] <= start)]
+    est_sel_check = len(df_sel)
+    years_check = 2003-start+1
 
+    # Seleccion de los datos de las estaciones
+    i = 0
+    for est_n in range(0, 23):
+        try:
+            aux_nombre = df_sel['estacion'][est_n]
+            aux_ds = SelEstacion(ds_f, aux_nombre)
+            aux_ds = aux_ds.sel(time=slice(start, 2003))
 
+            # en caso que falte algun anio
+            if len(np.unique(aux_ds.time.values)) < est_sel_check:
+                print('Error en start: ' + str(start))
+                break
 
+            # reemplazando con dates para facilitar
+            # la seleccion futura
+            time = pd.date_range(start=str(start-1)+ '-12-01', 
+                                 end='2003-12-01', freq='M') \
+                   + pd.DateOffset(days=1)
+            aux_ds['time'] = time
 
+            if i != 0:
+                ds_sel = xr.concat([ds_sel, aux_ds], dim='time')
+            else:
+                ds_sel = aux_ds
+                i += 1
+        except:
+            pass
 
+    # -------------------------------------------------------------------------#
+    # Calculos
+    # -------------------------------------------------------------------------#
+    i = 0
+    i2 = 0
+    for est_n in range(0, 23):
+        try:
+            aux_nombre = df_sel['estacion'][est_n]
+            aux = SelEstacion(ds_sel, aux_nombre)
+            # ------------------------------------------------------------------#
+            # Promedio anual T y acumulado PP
+            aux_pp = aux.prec.groupby('time.year').sum()
+            aux_t = aux.temp.groupby('time.year').mean()
+            # ------------------------------------------------------------------#
+            # marchas anuales
+            aux_marchas = aux.groupby('time.month').mean()
+            # ------------------------------------------------------------------#
+            # promedios y acumulados mensuales
+            aux_mam = aux.sel(time=is_months(aux['time.month'], mmin=3, mmax=5))
+            aux_mam_pp = aux_mam.prec.groupby('time.year').sum()
+            aux_mam_t = aux_mam.temp.groupby('time.year').mean()
 
+            aux_jja = aux.sel(time=is_months(aux['time.month'], mmin=6, mmax=8))
+            aux_jja_pp = aux_jja.prec.groupby('time.year').sum()
+            aux_jja_t = aux_jja.temp.groupby('time.year').mean()
 
+            aux_son = aux.sel(time=is_months(aux['time.month'], mmin=9, mmax=11))
+            aux_son_pp = aux_son.prec.groupby('time.year').sum()
+            aux_son_t = aux_son.temp.groupby('time.year').mean()
 
+            # djf!
+            aux_jf = aux.sel(time=aux.time.dt.month.isin([1, 2]))
+            # Selecciono diciembre y le cambio la fecha para pasarlo al proximo año
+            aux_d = aux.sel(time=aux.time.dt.month.isin([12]))
+            aux_d['time'] = pd.date_range(start=str(start+1) + '-12-01',
+                                          end='2005-12-01', freq='A-DEC')
+            # juntando d con jf
+            aux_djf = xr.concat([aux_jf, aux_d], dim='time')
+            aux_djf_pp = aux_djf.prec.groupby('time.year').sum()[:-1]
+            aux_djf_t = aux_djf.temp.groupby('time.year').mean()[:-1]
+            # ------------------------------------------------------------------#
+            d = {'estacion': [aux_nombre] * len(aux_t.year.values),
+                 'anios': aux_t.year.values,
+                 'tmeany': aux_t.values, 'ppacumy': aux_pp.values,
+                 'tmam': aux_mam_t.values, 'ppmam': aux_mam_pp.values,
+                 'tjja': aux_jja_t.values, 'ppjja': aux_jja_pp.values,
+                 'tson': aux_son_t.values, 'ppson': aux_son_pp.values,
+                 'tdjf': aux_djf_t.values, 'ppdjf': aux_djf_pp.values}
 
+            if i == 0:
+                i += 1
+                df = pd.DataFrame(d)
+            else:
+                df = df.append(pd.DataFrame(d), ignore_index=True)
 
+            # ------------------------------------------------------------------#
+            d2 = {'estacion': [aux_nombre] * 12, 'anios': np.linspace(1, 12, 12),
+                  'tmarcha': aux_marchas.temp.values,
+                  'ppmarcha': aux_marchas.prec.values}
 
+            if i2 == 0:
+                i2 += 1
+                df_marchas = pd.DataFrame(d2)
+            else:
+                df_marchas = df_marchas.append(pd.DataFrame(d2), ignore_index=True)
+        except:
+            pass
 
-
-
-
-
-
-
+    # Test: se computaros todas las estaciones seleccionadas?
+    if est_sel_check == (len(df))/years_check:
+        print('start: ' + str(start) + ' OK')
+        # guardado, stand by...
+        # HAY Q SACAR LOS NANs...
+        # np.savetxt(out_dir + str(start) + '_2003.txt', df, fmt='%d',
+        #            delimiter='\t')
+        # np.savetxt(out_dir + str(start) + '_2003_marchas.txt', df_marchas,
+        #            fmt='%d', delimiter='\t')
+# -----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# Tendencia y significancia
+# -----------------------------------------------------------------------------#
