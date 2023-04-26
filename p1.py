@@ -3,11 +3,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import xarray as xr
+import pymannkendall as mk
 #-----------------------------------------------------------------------------#
 data_dir = '/home/luciano.andrian/doc/climaext/p1/data/'
 out_dir = '/home/luciano.andrian/doc/climaext/p1/'
 save = True
-dpi = 300
+dpi = 200
+plot_scatter_estaciones_sel = False
 #-----------------------------------------------------------------------------#
 def SelectAreas(df, low, top, n_col=0):
     return df.loc[(df[df.columns[n_col]]>=low)&(df[df.columns[n_col]]<=top)]
@@ -128,36 +130,38 @@ df_30_11 = df_30.loc[(df['end']-df['start']>30) & (df['maxtimestep']<=5)]
 
 # -----------------------------------------------------------------------------#
 # ploteo de las estaciones para ambas variables
-for n in range(0, 22):
-    try:
-        aux = SelEstacion(ds_f, df_30_11['estacion'][n])
-        fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
-        ax = fig.add_subplot(111)
-        ax2 = ax.twinx()
-        temp_tl = ax.scatter(aux.time.values, aux.temp.values,
-                             color='firebrick', label='Temp')
-        prec_tl = ax2.scatter(aux.time.values, aux.prec.values,
-                              color='dodgerblue', label='Prec')
+if plot_scatter_estaciones_sel:
+    for n in range(0, 22):
+        try:
+            aux = SelEstacion(ds_f, df_30_11['estacion'][n])
+            fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+            ax = fig.add_subplot(111)
+            ax2 = ax.twinx()
+            temp_tl = ax.scatter(aux.time.values, aux.temp.values,
+                                 color='firebrick', label='Temp')
+            prec_tl = ax2.scatter(aux.time.values, aux.prec.values,
+                                  color='dodgerblue', label='Prec')
 
-        ax.set_ylim(5, 30)
-        ax.set_ylabel('Temp. [ºC]')
-        ax2.set_ylim(0, 500)
-        ax2.set_ylabel('Prec. [mm]')
-        ax.set_xlabel('Años')
+            ax.set_ylim(5, 30)
+            ax.set_ylabel('Temp. [ºC]')
+            ax2.set_ylim(0, 500)
+            ax2.set_ylabel('Prec. [mm]')
+            ax.set_xlabel('Años')
 
-        lns = [temp_tl] + [prec_tl]
-        labs = [l.get_label() for l in lns]
-        ax.legend(lns, labs, loc='upper left')
-        ax.set_title(str(df_30_11['estacion'][n]) + ' - ' +  str(n))
-        if save:
-            plt.savefig(out_dir + str(df_30_11['estacion'][n]) +
-                        '_' +  str(n) + '.jpg')
-            print('Save')
-            plt.close('all')
-        else:
-            plt.show()
-    except:
-        pass
+            lns = [temp_tl] + [prec_tl]
+            labs = [l.get_label() for l in lns]
+            ax.legend(lns, labs, loc='upper left')
+            ax.set_title(str(df_30_11['estacion'][n]) + ' - ' + str(n))
+            if save:
+                plt.savefig(out_dir + str(df_30_11['estacion'][n]) +
+                            '_' + str(n) + '.jpg')
+                print('Save')
+                plt.close('all')
+            else:
+                plt.show()
+        except:
+            pass
+
 
 
 
@@ -205,6 +209,9 @@ Prec.
 # -----------------------------------------------------------------------------#
 # Calculando todo para los distintos periodos
 # -----------------------------------------------------------------------------#
+
+est_sel['OMM'] = est_sel['OMM']*10
+
 for start in [1970, 1961,1951, 1934]:
     # Seleccion del periodo a partir del criterio aplicado
     df_sel = df_30_11.loc[(df_30_11['end'] == 2003) &
@@ -227,7 +234,7 @@ for start in [1970, 1961,1951, 1934]:
 
             # reemplazando con dates para facilitar
             # la seleccion futura
-            time = pd.date_range(start=str(start-1)+ '-12-01', 
+            time = pd.date_range(start=str(start-1)+ '-12-01',
                                  end='2003-12-01', freq='M') \
                    + pd.DateOffset(days=1)
             aux_ds['time'] = time
@@ -242,6 +249,7 @@ for start in [1970, 1961,1951, 1934]:
 
     # -------------------------------------------------------------------------#
     # Calculos
+    print('Calculando...')
     # -------------------------------------------------------------------------#
     i = 0
     i2 = 0
@@ -317,7 +325,197 @@ for start in [1970, 1961,1951, 1934]:
         #            delimiter='\t')
         # np.savetxt(out_dir + str(start) + '_2003_marchas.txt', df_marchas,
         #            fmt='%d', delimiter='\t')
+
+    print('Calculo y testeo de tendencia')
+    for aux_nombre in np.unique(df.estacion):
+        df_aux = df.loc[(df['estacion'] == aux_nombre)]
+        df_aux_marchas = df_marchas.loc[(df_marchas['estacion'] == aux_nombre)]
+        df_trends_aux = pd.DataFrame({'estacion': [str(aux_nombre)]})
+        for col in df_aux.columns[2:]:
+            mk_test = mk.original_test(df_aux[col])
+
+            d = pd.DataFrame({col: [np.round(mk_test.slope, 2)],
+                              col + 'sig': [mk_test.h]})
+
+            df_trends_aux = pd.concat([df_trends_aux, d], axis=1)
+
+        # Seleccionar lat y lon de las estaciones
+        aux_coords = est_sel.loc[(est_sel['OMM'] == aux_nombre)]
+        d2 = pd.DataFrame({'nombre': aux_coords.Nombre.values[0],
+                           'lon': [aux_coords['Lon'].values[0]],
+                           'lat': [aux_coords['Lat'].values[0]]})
+
+        # Ploteos Series
+        print('Ploteando series...')
+        # Temperatura -------------------------------------------------------------#
+        fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+        ax = fig.add_subplot(111)
+
+        tmeany = ax.plot(df_aux.anios, df_aux.tmeany, '-o', label='Anual', color='k'
+                         , linewidth=2,
+                         markersize=.5, markerfacecolor='k', markeredgecolor='white')
+        tmam = ax.plot(df_aux.anios, df_aux.tmam, '-o', label='MAM', color='gold',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='orange')
+        tjja = ax.plot(df_aux.anios, df_aux.tjja, '-o', label='JJA', color='dodgerblue',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='turquoise')
+        tson = ax.plot(df_aux.anios, df_aux.tson, '-o', label='SON', color='green',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='lime')
+        tdjf = ax.plot(df_aux.anios, df_aux.tdjf, '-o', label='DJF', color='firebrick'
+                       , linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='red')
+        ax.set_ylim(5, 30)
+        ax.set_ylabel('[ºC]')
+        ax.set_xlabel('Años')
+        lns = tmeany + tmam + tjja + tson + tdjf
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc='upper left')
+        ax.grid()
+        ax.set_title(d2.nombre.values[0] + ' - Temperatura - ' + str(start) + '-2003')
+        if save:
+            plt.savefig(out_dir + str(aux_nombre) + '_series_Temp_' + str(start) + '-2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
+
+        # Precipitacion - Estacional  # -----------------------------------------------#
+        fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+        ax = fig.add_subplot(111)
+        tmam = ax.plot(df_aux.anios, df_aux.ppmam, '-o', label='MAM', color='gold',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='orange')
+        tjja = ax.plot(df_aux.anios, df_aux.ppjja, '-o', label='JJA', color='dodgerblue',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='turquoise')
+        tson = ax.plot(df_aux.anios, df_aux.ppson, '-o', label='SON', color='green',
+                       linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='lime')
+        tdjf = ax.plot(df_aux.anios, df_aux.ppdjf, '-o', label='DJF', color='firebrick'
+                       , linewidth=2,
+                       markersize=.5, markerfacecolor='k', markeredgecolor='red')
+        ax.set_ylim(0, 700)
+        ax.set_ylabel('[mm]')
+        ax.set_xlabel('Años')
+        lns = tmam + tjja + tson + tdjf
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc='upper left')
+        ax.grid()
+        ax.set_title(d2.nombre.values[0] + ' - Precipitacion - ' + str(start) + '-2003')
+        if save:
+            plt.savefig(out_dir +  str(aux_nombre)+ '_series_Prec_' + str(start) + '-2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
+
+        # Precipitacion - ANUAL -------------------------------------------------------#
+        fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+        ax = fig.add_subplot(111)
+        tmeany = ax.plot(df_aux.anios, df_aux.ppacumy, '-o', label='Anual', color='k'
+                         , linewidth=2,
+                         markersize=.5, markerfacecolor='k', markeredgecolor='white')
+        ax.set_ylim(100, 1700)
+        # ax2.set_ylim(400,1500)
+        ax.set_ylabel('[mm] Anual')
+        ax.set_xlabel('Años')
+        lns = tmam + tjja + tson + tdjf
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc='upper left')
+        ax.grid()
+        ax.set_title(d2.nombre.values[0] + ' - Precipitacion - ' + str(start) + '-2003')
+        if save:
+            plt.savefig(out_dir +  str(aux_nombre) + '_series_Prec_' + str(start) + '-2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
+        # -----------------------------------------------------------------------------#
+        # Marchas
+        fig = plt.figure(1, figsize=(10, 5), dpi=dpi)
+        ax = fig.add_subplot(111)
+        ax2 = ax.twinx()
+        tmarcha = ax2.plot(df_aux_marchas.anios, df_aux_marchas.tmarcha,
+                          label='Temp', color='firebrick'
+                         , linewidth=4, markersize=.5, markerfacecolor='k',
+                          markeredgecolor='red')
+        ppmarcha = ax.bar(df_aux_marchas.anios, df_aux_marchas.ppmarcha,
+                          label='Prec')
+        ax.set_ylim(0, 200)
+        ax2.set_ylim(5,25)
+        ax.set_ylabel('[mm]')
+        ax2.set_ylabel('[ºC]')
+        ax.set_xlabel('Mes')
+        ax.grid()
+        ax.set_title(d2.nombre.values[0] + ' - Marchas Anuales - ' + str(start) + '-2003')
+        if save:
+            plt.savefig(out_dir + str(aux_nombre) + '_marchas_' + str(start) + '-2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
+        # -----------------------------------------------------------------------------#
+        # -----------------------------------------------------------------------------#
+
+        if aux_nombre == np.unique(df.estacion)[0]:
+
+            df_trends = pd.concat([d2, df_trends_aux], axis=1)
+        else:
+
+            df_trends_aux = pd.concat([d2, df_trends_aux], axis=1)
+            df_trends = df_trends.append(df_trends_aux, ignore_index=True)
+
+    print('Save df_trends in ' + str(start) + '-2003')
+    np.savetxt(out_dir + 'df_trends_' + str(start) + '_2003.txt', df_trends, fmt='%s', delimiter='\t')
 # -----------------------------------------------------------------------------#
 # -----------------------------------------------------------------------------#
 # Tendencia y significancia
+# para no asumir ninguna distribucion
+# Mann-Kendall, no parametrico
 # -----------------------------------------------------------------------------#
+
+# incorporar a lo anteriod
+# argegarle titulo,. lat lon, periodo
+# guardar
+
+# mapas
+import cartopy.feature
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import cartopy.crs as ccrs
+from cartopy.io.img_tiles import StamenTerrain
+
+
+fig = plt.figure(figsize=(5, 6), dpi=100)
+crs_latlon = ccrs.PlateCarree()
+tiler = StamenTerrain()
+mercator = tiler.crs
+ax = fig.add_subplot(111, projection=ccrs.PlateCarree(central_longitude=0))
+ax.add_image(tiler, 8)
+plt.scatter(df_trends.lon.values, df_trends.lat.values,
+           s=df_trends.tson.values*10000,
+           c = df_trends.tson.values,
+            cmap='viridis')
+
+# cuales son significativas
+df_coords_aux = df_trends.loc[df_trends['tsonsig']==True]
+
+# ax.scatter(df_coords_aux.lon.values, df_coords_aux.lat.values,
+#            c=df_coords_aux.tsonsig.values, edgecolor='k',
+#            s=200, marker= 'x')
+ax.scatter(df_coords_aux.lon.values, df_coords_aux.lat.values,
+           c='red', edgecolor='red',
+           s=100, marker= 'P')
+plt.colorbar(fraction=0.042, pad=0.035,shrink=0.7)
+#ax.stock_img()
+ax.coastlines('10m')
+ax.set_extent([-63, -55, -40, -30], crs_latlon)
+ax.add_feature(cartopy.feature.LAND, facecolor='white')
+ax.add_feature(cartopy.feature.OCEAN)
+ax.add_feature(cartopy.feature.COASTLINE)
+ax.add_feature(cartopy.feature.STATES)
+plt.tight_layout()
+plt.show()
+
+
