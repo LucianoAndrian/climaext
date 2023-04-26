@@ -4,9 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import xarray as xr
 import pymannkendall as mk
+import cartopy.feature
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import cartopy.crs as ccrs
+from cartopy.io.img_tiles import StamenTerrain
+import scipy.stats
 #-----------------------------------------------------------------------------#
 data_dir = '/home/luciano.andrian/doc/climaext/p1/data/'
-out_dir = '/home/luciano.andrian/doc/climaext/p1/'
+out_dir = '/home/luciano.andrian/doc/climaext/p1/salidas/'
 save = True
 dpi = 200
 plot_scatter_estaciones_sel = False
@@ -42,16 +47,7 @@ for e, i in zip(range(0, len(aux)), range(0, len(aux))):
         aux_serie = est_norte.loc[(est_norte[0] == est_num)]
     if len(aux_serie) == 0:
         aux_serie = est_pat.loc[(est_pat[0] == est_num)]
-    #
-    # aux_ds = xr.Dataset(
-    #     data_vars={
-    #         'anio':(aux_serie[1].values),
-    #         # sacando los datos faltantes por np.nan
-    #         'temp':(aux_serie[3].replace(990,np.nan)/10).values,
-    #         'prec':(aux_serie[4].replace(200000,np.nan)/10).values
-    #     },
-    #     coords={'estacion':est_num},
-    # )
+
     aux_serie_pp = aux_serie[4].replace(200000,np.nan)/10
     aux_serie_pp = aux_serie_pp.replace(15000,0.05) #traza
     aux_ds = xr.Dataset(
@@ -166,53 +162,28 @@ if plot_scatter_estaciones_sel:
 
 
 """
----------------------------------------0: 1931-2003 
---------------------------2: Temp 1951-2003, pp: 1900-1940, 1951-2003
---------------------------3: 1941-2003
---------------4: 1961-2003
---------------------------6: 1951-2003
----------------------------------------8: ~1931 - 2003
---------------------------9: 1951-2003
---------------------------10: 1860-2003
-13: 1931-1994-97 
----------------------------------------14: 1931-2003
--------------16: 1931-1960 1970-2003
----------------------------------------17: Temp 1931-2003 pp: 1888-2003
----------------------------------------21: temp 1860-1880 1890-2003 pp: 1860-2003
-
-Periodo mas corto: 1961-1994 debido a una estacion. limita mucho --> chau! chau que? estoy saludando
-(chau las dos, la que empieza en 1961 y la que termina en 1994)
-
-
-
 El CRITERIO:
 Periodos mayores a 30 años con periodos faltantes de < 3años
 Considerando los periodos mas largos que se pueden tomar y teniendo en cuenta que todas las
 estaciones presentan nans se descartan la 13 y la 16. La 16 se podria incluir en un periodo de 33 años comun a todas
 pero el mas corto
-
 Con un total de 11 estaciones de 22 inciales se pueden estudiar los siquientes periodos:
 Periodos mas largos:
-Temp. 
-1970-2003 x12
-1961-2003 x11
-1951-2003 x10
-1931-2003 x6
+1961-2003 
+1951-2003 
+1931-2003 
 
-Prec.
-1970-2003 x12
-1961-2003 x11
-1951-2003 x10
-1931-2003 x6
-1888-2003 x3
 """
+
 # -----------------------------------------------------------------------------#
 # Calculando todo para los distintos periodos
 # -----------------------------------------------------------------------------#
 
 est_sel['OMM'] = est_sel['OMM']*10
 
-for start in [1970, 1961,1951, 1934]:
+#for start in [1961,1951, 1934]: en caso de ser necesario, funciona con todos
+for start in [1961]:
+
     # Seleccion del periodo a partir del criterio aplicado
     df_sel = df_30_11.loc[(df_30_11['end'] == 2003) &
                           (df_30_11['start'] <= start)]
@@ -319,13 +290,44 @@ for start in [1970, 1961,1951, 1934]:
     # Test: se computaros todas las estaciones seleccionadas?
     if est_sel_check == (len(df))/years_check:
         print('start: ' + str(start) + ' OK')
-        # guardado, stand by...
-        # HAY Q SACAR LOS NANs...
-        # np.savetxt(out_dir + str(start) + '_2003.txt', df, fmt='%d',
-        #            delimiter='\t')
-        # np.savetxt(out_dir + str(start) + '_2003_marchas.txt', df_marchas,
-        #            fmt='%d', delimiter='\t')
 
+    # Hay alguna estacion representativa de la region? --------------------------#
+    t_critic = scipy.stats.t.ppf(0.975, 2003 - start + 1 - 2)
+    r_crit = np.sqrt(1 / (((np.sqrt((2003 - start + 1) - 2) / t_critic) ** 2) + 1))
+    for col in df.columns[2:]:
+        for aux_nombre2 in np.unique(df.estacion):
+
+            df_aux_corr = df.loc[(df['estacion'] == aux_nombre2)]
+
+            d = pd.DataFrame({str(aux_nombre2): df_aux_corr[col].values})
+            if aux_nombre2 == np.unique(df.estacion)[0]:
+                df_corr = d
+            else:
+                df_corr = pd.concat([df_corr, d], axis=1)
+
+        df_corr = df_corr.corr()
+        df_corr_masked = np.ma.masked_where((df_corr < r_crit), df_corr)
+        df_corr_masked = np.ma.masked_where((df_corr_masked > 0.9), df_corr_masked)
+        fig = plt.figure(figsize=(6, 6), dpi=dpi)
+        ax = fig.add_subplot(111)
+        im = ax.imshow(df_corr_masked, vmin=0, vmax=1,
+                       cmap='Spectral_r', extent=None)
+        ax.set_xticks(range(0, len(np.unique(df.estacion))),
+                      list(np.unique(df.estacion)), rotation=90)
+        ax.set_yticks(range(0, len(np.unique(df.estacion))),
+                      list(np.unique(df.estacion)))
+        plt.colorbar(im)
+        ax.set_title('Correlación - ' + col + ' - ' +
+                     str(start) + '-2003')
+        if save:
+            plt.savefig(out_dir + col + '_corr_' +
+                        str(start) + '-2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
+
+    #--------------------------------------------------------------------------#
     print('Calculo y testeo de tendencia')
     for aux_nombre in np.unique(df.estacion):
         df_aux = df.loc[(df['estacion'] == aux_nombre)]
@@ -344,6 +346,7 @@ for start in [1970, 1961,1951, 1934]:
         d2 = pd.DataFrame({'nombre': aux_coords.Nombre.values[0],
                            'lon': [aux_coords['Lon'].values[0]],
                            'lat': [aux_coords['Lat'].values[0]]})
+
 
         # Ploteos Series
         print('Ploteando series...')
@@ -469,53 +472,82 @@ for start in [1970, 1961,1951, 1934]:
 
     print('Save df_trends in ' + str(start) + '-2003')
     np.savetxt(out_dir + 'df_trends_' + str(start) + '_2003.txt', df_trends, fmt='%s', delimiter='\t')
+
+    titulos = ['Tendencia T Anual - ' + str(start) + '-2003', None,
+               'Tendencia PP Anual - ' + str(start) + '-2003', None,
+               'Tendencia T MAM - ' + str(start) + '-2003', None,
+               'Tendencia PP MAM - ' + str(start) + '-2003', None,
+               'Tendencia T JJA - ' + str(start) + '-2003', None,
+               'Tendencia PP JJA - ' + str(start) + '-2003', None,
+               'Tendencia T SON - ' + str(start) + '-2003', None,
+               'Tendencia PP SON - ' + str(start) + '-2003', None,
+               'Tendencia T DJF - ' + str(start) + '-2003', None,
+               'Tendencia PP DJF - ' + str(start) + '-2003']
+
+    tiler = StamenTerrain()
+    for t in range(0, len(df_trends.columns[4:].values), 2):
+
+        case = df_trends.columns[4:].values[t]
+        sig = df_trends.columns[4:].values[t + 1]
+        print(t)
+        fig = plt.figure(figsize=(7, 8), dpi=dpi)
+        crs_latlon = ccrs.PlateCarree()
+        mercator = tiler.crs
+        ax = fig.add_subplot(111, projection=ccrs.PlateCarree(central_longitude=0))
+        ax.add_image(tiler, 8)
+        ax.coastlines('10m')
+        ax.set_extent([-63, -55, -40, -30], crs_latlon)
+
+        ax.add_feature(cartopy.feature.LAND, facecolor='white')
+        ax.add_feature(cartopy.feature.OCEAN)
+        ax.add_feature(cartopy.feature.COASTLINE)
+        ax.add_feature(cartopy.feature.STATES)
+
+        plt.scatter(df_trends.lon.values, df_trends.lat.values,
+                    s=300,
+                    c=df_trends[case].values,
+                    cmap='spring_r')
+
+        # cuales son significativas
+        df_coords_aux = df_trends.loc[df_trends[sig] == True]
+        ax.scatter(df_coords_aux.lon.values, df_coords_aux.lat.values,
+                   c='k', edgecolor='k',
+                   s=300, marker='+')
+
+        plt.colorbar(fraction=0.042, pad=0.035, shrink=0.7)
+        ax.set_title(titulos[t])
+        plt.tight_layout()
+        if save:
+            plt.savefig(out_dir + case + '_mapa_' + str(start) + '_2003.jpg')
+            print('Save')
+            plt.close('all')
+        else:
+            plt.show()
 # -----------------------------------------------------------------------------#
-# -----------------------------------------------------------------------------#
-# Tendencia y significancia
-# para no asumir ninguna distribucion
-# Mann-Kendall, no parametrico
-# -----------------------------------------------------------------------------#
 
-# incorporar a lo anteriod
-# argegarle titulo,. lat lon, periodo
-# guardar
-
-# mapas
-import cartopy.feature
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-import cartopy.crs as ccrs
-from cartopy.io.img_tiles import StamenTerrain
-
-
-fig = plt.figure(figsize=(5, 6), dpi=100)
+fig = plt.figure(figsize=(7, 8), dpi=dpi)
 crs_latlon = ccrs.PlateCarree()
-tiler = StamenTerrain()
 mercator = tiler.crs
 ax = fig.add_subplot(111, projection=ccrs.PlateCarree(central_longitude=0))
 ax.add_image(tiler, 8)
-plt.scatter(df_trends.lon.values, df_trends.lat.values,
-           s=df_trends.tson.values*10000,
-           c = df_trends.tson.values,
-            cmap='viridis')
-
-# cuales son significativas
-df_coords_aux = df_trends.loc[df_trends['tsonsig']==True]
-
-# ax.scatter(df_coords_aux.lon.values, df_coords_aux.lat.values,
-#            c=df_coords_aux.tsonsig.values, edgecolor='k',
-#            s=200, marker= 'x')
-ax.scatter(df_coords_aux.lon.values, df_coords_aux.lat.values,
-           c='red', edgecolor='red',
-           s=100, marker= 'P')
-plt.colorbar(fraction=0.042, pad=0.035,shrink=0.7)
-#ax.stock_img()
 ax.coastlines('10m')
 ax.set_extent([-63, -55, -40, -30], crs_latlon)
+
 ax.add_feature(cartopy.feature.LAND, facecolor='white')
 ax.add_feature(cartopy.feature.OCEAN)
 ax.add_feature(cartopy.feature.COASTLINE)
 ax.add_feature(cartopy.feature.STATES)
-plt.tight_layout()
-plt.show()
 
+plt.scatter(est_sel.Lon.values, est_sel.Lat.values,
+            s=150,
+            c='r',
+            cmap='spring_r')
+ax.set_title('Estaciones region "PAMPA"')
+plt.tight_layout()
+if save:
+    plt.savefig(out_dir + 'Estaciones_PAMPA.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
