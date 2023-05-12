@@ -52,6 +52,268 @@ def checkEx(out, media, mes, smnexmax, smnexmin, variable):
             return out
         else:
             return []
+
+def PeriodosTemp(df, perc_t):
+    def checkEx2(data):
+        try:
+            len(data)
+            return data
+        except:
+            d = {'estacion': [0], 'dia': [0], 'mes': [0], 'anio': [0],
+                 'tx': [0], 'tm': [0], 'pp': [0], 'ppc': [0], 'h': [0],
+                 'dv': [0], 'vx': [0]}
+            d = pd.DataFrame(d)
+            return d
+
+
+    tm10_count = 0
+    tm01_count = 0
+    tx90_count = 0
+    tx99_count = 0
+    tm90_count = 0
+    tm99_count = 0
+    for mes in range(1, 13):
+        mc = None
+        ec = None
+        mf = None
+        ef = None
+        for dia in range(1, 32):
+            if (mes == 2) and (dia == 29):
+                pass
+            else:
+                dia_aux = df.loc[(df['mes'] == mes) & (df['dia'] == dia)]
+
+                if len(dia_aux) == 0:
+                    pass
+                else:
+                    aux = perc_t.loc[
+                        (perc_t['dia'] == dia) & (perc_t['mes'] == mes)]
+
+                    tx90 = aux.tx_9.values[0]
+                    tx99 = aux.tx_99.values[0]
+                    tm90 = aux.tm_9.values[0]
+                    tm99 = aux.tm_99.values[0]
+                    tm10 = aux.tm_1.values[0]
+                    tm01 = aux.tm_01.values[0]
+
+                    # muy calidos
+                    if dia_aux.tx.values[0] > tx90:
+                        if tx90_count == 0:
+                            mc = dia_aux
+                            tx90_count = 1
+                        else:
+                            mc = pd.concat([mc, dia_aux], axis=0)
+
+                        # extremadamente calidos
+                        if dia_aux.tx.values[0] > tx99:
+                            if tx99_count == 0:
+                                ec = dia_aux
+                                tx99_count = 1
+                            else:
+                                ec = pd.concat([ec, dia_aux], axis=0)
+
+                    # muy calidos desde tm
+                    if dia_aux.tm.values[0] > tm90:
+                        if tm90_count == 0:
+                            mc_tm = dia_aux
+                            tm90_count = 1
+                        else:
+                            mc_tm = pd.concat([mc_tm, dia_aux], axis=0)
+
+                        # extremadamente calidos
+                        if dia_aux.tm.values[0] > tm99:
+                            if tm99_count == 0:
+                                ec_tm = dia_aux
+                                tm99_count = 1
+                            else:
+                                ec_tm = pd.concat([ec_tm, dia_aux], axis=0)
+
+                    # muy frios
+                    if dia_aux.tm.values[0] < tm10:
+                        if tm10_count == 0:
+                            mf = dia_aux
+                            tm10_count = 1
+                        else:
+                            mf = pd.concat([mf, dia_aux], axis=0)
+
+                        # extremadamente frio
+                        if dia_aux.tm.values[0] < tm01:
+                            if tm01_count == 0:
+                                ef = dia_aux
+                                tm01_count = 1
+                            else:
+                                ef = pd.concat([ef, dia_aux], axis=0)
+        if mes == 1:
+            meses_mc = checkEx2(mc)
+            meses_ec = checkEx2(ec)
+            meses_mc_tm = checkEx2(mc_tm)
+            meses_ec_tm = checkEx2(ec_tm)
+            meses_mf = checkEx2(mf)
+            meses_ef = checkEx2(ef)
+        else:
+            meses_mc = pd.concat([meses_mc, checkEx2(mc)], axis=0)
+            meses_ec = pd.concat([meses_ec, checkEx2(ec)], axis=0)
+            meses_mc_tm = pd.concat([meses_mc_tm, checkEx2(mc_tm)], axis=0)
+            meses_ec_tm = pd.concat([meses_ec_tm, checkEx2(ec_tm)], axis=0)
+            meses_mf = pd.concat([meses_mf, checkEx2(mf)], axis=0)
+            meses_ef = pd.concat([meses_ef, checkEx2(ef)], axis=0)
+
+    return meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef
+
+def DetecPeriodsx3(df):
+    from itertools import groupby
+    from operator import itemgetter
+    check = True
+    check_first = False
+    for mes in range(1, 13):
+        aux = df.loc[df['mes'] == mes]
+        per_f = []
+        aux_mes = []
+        if len(aux) >= 3:
+
+            for k, g in groupby(enumerate(aux['dia'].values),
+                                lambda ix: ix[0] - ix[1]):
+                aux_mes.append(list(map(itemgetter(1), g)))
+            periodos = [len(l) >= 3 for l in aux_mes]
+
+            if True in periodos:
+                check_first = True
+                for l in range(0, len(periodos)):
+                    if periodos[l]:
+                        per_f.append(aux_mes[l])
+                # ESTO PUEDE Q NO HAGA FALTA
+                for l in range(0, len(per_f)):
+                    if l == 0:
+                        mes_per = aux.loc[aux['dia'].isin(per_f[l])]
+                    else:
+                        mes_per = pd.concat([mes_per,
+                                             aux.loc[
+                                                 aux['dia'].isin(per_f[l])]],
+                                            axis=0)
+        try:
+            len(mes_per)
+            if check & check_first:
+                per_meses = mes_per
+                check = False
+            else:
+                per_meses = pd.concat([per_meses, mes_per], axis=0)
+
+            del mes_per
+        except:
+            pass
+    try:
+        return per_meses
+    except:
+        return []
+
+def plotperiods(anio, titulo, name_fig, dpi, save,
+                anioper_mc, anioper_ec, anioper_mc_tm, anioper_ec_tm,
+                anioper_mf, anioper_ef):
+    fig = plt.figure(figsize=(10, 5), dpi=dpi)
+    ax = fig.add_subplot(111)
+
+    plt.fill_between(x=np.linspace(1, 365, 365),
+                     y1=perc_t['tx_99'].values, y2=perc_t['tm_01'].values,
+                     color='#B5B5B5', alpha=1, label='p01-p99', linewidth=0.0)
+
+    plt.fill_between(x=np.linspace(1, 365, 365),
+                     y1=perc_t['tx_9'].values, y2=perc_t['tm_1'].values,
+                     color='#F9EEEE', alpha=1, label='p10-p90', linewidth=0.0)
+    # 2020
+    ax.plot(anio['dj'], anio['tx'].values, label='2020', color='k', linewidth=1)
+    ax.plot(anio['dj'], anio['tm'].values, label='2020', color='blue',
+            linewidth=1)
+
+    try:
+        ax.scatter(anioper_mc['dj'], anioper_mc['tx'].values,
+                   label='Muy Calido',
+                   color='magenta', linewidth=3)
+    except:
+        pass
+
+    try:
+        ax.scatter(anioper_ec['dj'], anioper_ec['tx'].values,
+                   label='Ext. Calido',
+                   color='red', linewidth=3)
+    except:
+        pass
+
+    try:
+        ax.scatter(anioper_mc_tm['dj'], anioper_mc_tm['tm'].values,
+                   label='Muy Calido Tn',
+                   color='coral', linewidth=3)
+    except:
+        pass
+
+    try:
+        ax.scatter(anioper_ec_tm['dj'], anioper_ec_tm['tm'].values,
+                   label='Ext. Calido Tn',
+                   color='orange', linewidth=3)
+    except:
+        pass
+
+    try:
+        ax.scatter(anioper_mf['dj'], anioper_mf['tm'].values, label='Muy Frio',
+                   color='k', linewidth=3)
+    except:
+        pass
+
+    try:
+        ax.scatter(anioper_ef['dj'], anioper_ef['tm'].values, label='Ext. Frio',
+                   color='purple', linewidth=3)
+    except:
+        pass
+
+    #setear ejes y titulo
+    print(titulo)
+
+    plt.legend()
+    if save:
+        plt.savefig(out_dir + name_fig +'.jpg')
+        print('Save')
+        plt.close('all')
+    else:
+        plt.show()
+
+def plotItem3c(anio, titulo, dpi, save, per_pp, anioacum):
+    fig = plt.figure(figsize=(10, 5), dpi=dpi)
+    ax = fig.add_subplot(111)
+
+    ax.bar(anio.dj, anio.pp, label='pp diaria', color='dodgerblue', width=2)
+
+    # percentiles 95 y 99
+    diasmeses = np.cumsum([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
+
+    for q, c in zip(['pp_95', 'pp_99'], ['orange', 'firebrick']):
+        first = True
+        for dm in range(0, 12):
+            if first:
+                first = False
+                ax.hlines(y=per_pp[q].values[dm], xmin=0, xmax=diasmeses[dm],
+                          label='p' + q.split('_')[1], color=c, linewidth=2)
+            else:
+                ax.hlines(y=per_pp[q].values[dm], xmin=diasmeses[dm - 1],
+                          xmax=diasmeses[dm], color=c, linewidth=2)
+
+    first = True
+    for dm in range(0, 12):
+        if first:
+            first = False
+            ax.hlines(y=anioacum.ppa.values[dm], xmin=0, xmax=diasmeses[dm],
+                      label='media \n mensual', color='indigo', linewidth=2)
+        else:
+            ax.hlines(y=anioacum.ppa.values[dm], xmin=diasmeses[dm - 1],
+                      xmax=diasmeses[dm], color='indigo', linewidth=2)
+
+    print(titulo)
+    #setar indices
+    plt.legend()
+    if save:
+        plt.savefig(out_dir + name_fig +'.jpg')
+        print('Save')
+        plt.close('all')
+    else:
+        plt.show()
 #------------------------------------------------------------------------------#
 data = pd.read_csv(data_dir + 'estaciones_1959_2020.csv', sep=',', header=None)
 data_2021 = pd.read_csv(data_dir + 'estaciones_2021.csv', sep=',', header=None)
@@ -254,29 +516,12 @@ for q in [.01, .10, .90, .99]:
                            , axis=1)
 
 # pp --------------------------#
-# asumo acumulado mensual,        <<<<<<<<<<CONFIRMAR!>>>>>>>>>>>>
-for a in range(1981,2011):
-    for mes in range(1,13):
-        ppa = jn_81_10.loc[(jn['anio'] == a) &
-                           (jn['mes'] == mes)].sum().pp
-
-        m = {'mes':[mes], 'anio':[a], 'ppa':[ppa]}
-        if mes == 1:
-            meses = pd.DataFrame(m)
-        else:
-            meses = pd.concat([meses, pd.DataFrame(m)], axis=0)
-
-    if a == 1981:
-        ppaf = meses
-    else:
-        ppaf = pd.concat([ppaf, meses], axis=0)
-
 #percentiles
 for q in [.95,.99]:
     for mes in range(1, 13):
-        per = ppaf.loc[ppaf['mes'] == mes].quantile(q)
+        per = jn.loc[(jn['mes'] == mes) & (jn['pp']>0.1)].quantile(q)
 
-        m = {'mes':[mes], 'pp_'+ str(q).split('.')[1]:[per.ppa]}
+        m = {'mes':[mes], 'pp_'+ str(q).split('.')[1]:[per.pp]}
         if mes == 1:
             meses = pd.DataFrame(m)
         else:
@@ -285,7 +530,7 @@ for q in [.95,.99]:
     if q == .95:
         per_pp = meses
     else:
-        per_pp = pd.concat([per_pp, meses], axis=1)
+        per_pp = pd.concat([per_pp, meses.pp_99], axis=1)
 
 #------------------------------------------------------------------------------#
 # Plots punto 3
@@ -295,7 +540,9 @@ for q in [.95,.99]:
 a20 = jn.loc[jn['anio']==2020]
 index = a20.loc[(a20['mes']==2) & (a20['dia']==29)].index
 a20 = a20.drop(index[0])
+a20['dj'] = range(1,366)
 a21 = jn.loc[jn['anio']==2021]
+a21['dj'] = range(1,366)
 
 # tx
 fig = plt.figure(figsize=(10, 5), dpi=dpi)
@@ -348,117 +595,65 @@ else:
     plt.show()
 
 # 3b --------------------------------------------------------------------------#
+# 2020
+meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef\
+    = PeriodosTemp(a20, perc_t)
 
-def PeriodosTemp(df, perc_t):
-    def checkEx2(data):
-        try:
-            len(data)
-            return data
-        except:
-            d = {'estacion': [0], 'dia': [0], 'mes': [0], 'anio': [0],
-                 'tx': [0], 'tm': [0], 'pp': [0], 'ppc': [0], 'h': [0],
-                 'dv': [0], 'vx': [0]}
-            d = pd.DataFrame(d)
-            return d
+a20per_mc = DetecPeriodsx3(meses_mc)
+a20per_ec = DetecPeriodsx3(meses_ec)
+a20per_mc_tm = DetecPeriodsx3(meses_mc_tm)
+a20per_ec_tm = DetecPeriodsx3(meses_ec_tm)
+a20per_mf = DetecPeriodsx3(meses_mf)
+a20per_ef = DetecPeriodsx3(meses_ef)
 
+plotperiods(a20, 'titulo', 'name_fig', 100, False,
+                a20per_mc, a20per_ec, a20per_mc_tm, a20per_ec_tm,
+                a20per_mf, a20per_ef)
 
-    tm10_count = 0
-    tm01_count = 0
-    tx90_count = 0
-    tx99_count = 0
-    for mes in range(1, 13):
-        mc = None
-        ec = None
-        mf = None
-        ef = None
-        for dia in range(1, 32):
-            if (mes == 2) and (dia == 29):
-                pass
-            else:
-                dia_aux = df.loc[(df['mes'] == mes) & (df['dia'] == dia)]
+# 2021
+meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef\
+    = PeriodosTemp(a21, perc_t)
 
-                if len(dia_aux) == 0:
-                    pass
-                else:
-                    aux = perc_t.loc[
-                        (perc_t['dia'] == dia) & (perc_t['mes'] == mes)]
+a21per_mc = DetecPeriodsx3(meses_mc)
+a21per_ec = DetecPeriodsx3(meses_ec)
+a21per_mc_tm = DetecPeriodsx3(meses_mc_tm)
+a21per_ec_tm = DetecPeriodsx3(meses_ec_tm)
+a21per_mf = DetecPeriodsx3(meses_mf)
+a21per_ef = DetecPeriodsx3(meses_ef)
 
-                    tx90 = aux.tx_9.values[0]
-                    tx99 = aux.tx_99.values[0]
-                    tm10 = aux.tm_1.values[0]
-                    tm01 = aux.tm_01.values[0]
+plotperiods(a21, 'titulo', 'name_fig', 100, False,
+                a21per_mc, a21per_ec, a21per_mc_tm, a21per_ec_tm,
+                a21per_mf, a21per_ef)
 
-                    # muy calidos
-                    if dia_aux.tx.values[0] > tx90:
-                        if tx90_count == 0:
-                            mc = dia_aux
-                            tx90_count = 1
-                        else:
-                            mc = pd.concat([mc, dia_aux], axis=0)
-
-                        # extremadamente calidos
-                        if dia_aux.tx.values[0] > tx99:
-                            if tx99_count == 0:
-                                ec = dia_aux
-                                tx99_count = 1
-                            else:
-                                ec = pd.concat([ec, dia_aux], axis=0)
-
-                        # muy frios
-                        if dia_aux.tm.values[0] < tm10:
-                            if tm10_count == 0:
-                                mf = dia_aux
-                                tm10_count = 1
-                            else:
-                                mf = pd.concat([mf, dia_aux], axis=0)
-
-                            # extremadamente frio
-                            if dia_aux.tm.values[0] < tm01:
-                                if tm01_count == 0:
-                                    ef = dia_aux
-                                    tm01_count = 1
-                                else:
-                                    ef = pd.concat([ef, dia_aux], axis=0)
-        if mes == 1:
-            meses_mc = checkEx2(mc)
-            meses_ec = checkEx2(ec)
-            meses_mf = checkEx2(mf)
-            meses_ef = checkEx2(ef)
+# 3cd -------------------------------------------------------------------------#
+def MonthMeanPP(data):
+    for m in range(1, 13):
+        aux = data.loc[(data['mes']==m) & (data['pp']>0.1)].mean().pp
+        m2 = {'mes':[m], 'ppa':[aux]}
+        if m == 1:
+            meses = pd.DataFrame(m2)
         else:
-            meses_mc = pd.concat([meses_mc, checkEx2(mc)], axis=0)
-            meses_ec = pd.concat([meses_ec, checkEx2(ec)], axis=0)
-            meses_mf = pd.concat([meses_mf, checkEx2(mf)], axis=0)
-            meses_ef = pd.concat([meses_ef, checkEx2(ef)], axis=0)
+            meses = pd.concat([meses, pd.DataFrame(m2)], axis=0)
 
-    return meses_mc, meses_ec, meses_mf, meses_ef
+    return meses
 
+a20_pp_mm = MonthMeanPP(a20)
+a21_pp_mm = MonthMeanPP(a21)
 
-meses_mc, meses_ec, meses_mf, meses_ef = PeriodosTemp(a20, perc_t)
+plotItem3c(a20, 'titulo', dpi, False, per_pp, a20_pp_mm)
+plotItem3c(a21, 'titulo', dpi, False, per_pp, a21_pp_mm)
 
-# cuando sean por 3 dias concecutivos
-from itertools import groupby
-from operator import itemgetter
-for mes in range(1, 13):
-    aux = meses_mc.loc[meses_mc['mes']==mes]
-    per_f = []
-    aux_mes = []
-    if len(aux)>=3:
+# 3e --------------------------------------------------------------------------#
+for i in range(1981,2010):
+    aux = jn_81_10.loc[jn_81_10['anio']==i]
+    d = pd.DataFrame(aux.pp.values)
+    if i == 1981:
+        da = d
+    else:
+        da = pd.concat([da,d], axis=1)
 
-        for k, g in groupby(enumerate(aux['dia'].values),
-                            lambda ix: ix[0] - ix[1]):
-            aux_mes.append(list(map(itemgetter(1), g)))
-        periodos = [len(l) >= 3 for l in aux_mes]
-
-        if True in periodos:
-            for l in range(0, len(periodos)):
-                if periodos[l]:
-                    per_f.append(aux_mes[l])
-            # ESTO PUEDE Q NO HAGA FALTA
-            for l in range(0, len(per_f)):
-                if l==0:
-                    mes_per = aux.loc[aux['dia'].isin(per_f[l])]
-                else:
-                    mes_per = pd.concat([mes_per,
-                                         aux.loc[aux['dia'].isin(per_f[l])]],
-                                        axis=0)
-
+plt.plot(da.fillna(0).transform('cumsum').mean(axis=1))
+plt.plot(a20.fillna(0).transform('cumsum').pp.values, label='2020')
+plt.plot(a21.fillna(0).transform('cumsum').pp.values, label='2021')
+plt.legend()
+plt.show()
