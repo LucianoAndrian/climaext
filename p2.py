@@ -644,7 +644,7 @@ plotItem3c(a20, 'titulo', dpi, False, per_pp, a20_pp_mm)
 plotItem3c(a21, 'titulo', dpi, False, per_pp, a21_pp_mm)
 
 # 3e --------------------------------------------------------------------------#
-for i in range(1981,2010):
+for i in range(1981,2011):
     aux = jn_81_10.loc[jn_81_10['anio']==i]
     d = pd.DataFrame(aux.pp.values)
     if i == 1981:
@@ -652,8 +652,195 @@ for i in range(1981,2010):
     else:
         da = pd.concat([da,d], axis=1)
 
-plt.plot(da.fillna(0).transform('cumsum').mean(axis=1))
-plt.plot(a20.fillna(0).transform('cumsum').pp.values, label='2020')
-plt.plot(a21.fillna(0).transform('cumsum').pp.values, label='2021')
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+
+ax.plot(da.fillna(0).transform('cumsum').mean(axis=1), label='1981-2010',
+         linewidth=2, color='k')
+ax.plot(a20.dj.values, a20.fillna(0).transform('cumsum').pp.values,
+            label='2020', linewidth=2)
+ax.plot(a20.dj.values,a21.fillna(0).transform('cumsum').pp.values,
+           label='2021', linewidth=2)
+
+#setear ejes y fechas en x
 plt.legend()
+if save:
+    plt.savefig(out_dir + '_3a_tx.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
+# 4 y 5 -----------------------------------------------------------------------#
+for i in range(1960,2022):
+    aux = jn.loc[jn['anio'] == i]
+    tx_c_m = 0
+    tm_c_m = 0
+    pp_c_m = 0
+
+    for m in range(1,13):
+        tx_count = 0
+        tm_count = 0
+        pp_count = 0
+        for d in range(1, 32):
+            try:
+                aux_d = aux.loc[(aux['mes'] == m) & (aux['dia'] == d)]
+
+                aux_d_per = perc_t.loc[
+                    (perc_t['mes'] == m) & (perc_t['dia'] == d)]
+
+                aux2_d_per = per_pp.loc[
+                    (per_pp['mes'] == m)]
+
+                txaux = aux_d.tx.values[0] >= aux_d_per.tx_9[0]
+                tmaux = aux_d.tm.values[0] <= aux_d_per.tm_1[0]
+                ppaux = aux_d.pp.values[0] >= aux2_d_per.pp_95[0]
+
+                if txaux:
+                    tx_count += 1
+
+                if tmaux:
+                    tm_count += 1
+
+                if ppaux:
+                    pp_count += 1
+            except:
+                pass
+
+        tx_c_m += tx_count
+        tm_c_m += tm_count
+        pp_c_m += pp_count
+
+    aux2 = pd.DataFrame({'anio':[i],
+                         'txper':[np.round(100*tx_c_m/365, 2)],
+                         'tmper':[np.round(100*tm_c_m/365, 2)],
+                         'ppper':[np.round(100*pp_c_m/365, 2)]})
+
+    if i == 1960:
+        anio_per = aux2
+    else:
+        anio_per = pd.concat([anio_per, aux2], axis=0)
+
+
+
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+txl = ax2.plot(np.arange(0, 62), anio_per.txper.values, color='firebrick',
+               label='% T > p90', linewidth=2)
+tml= ax2.plot(np.arange(0, 62), anio_per.tmper.values, color='limegreen',
+              label='% T < p10', linewidth=2)
+ppb = ax.bar(np.arange(0, 62), anio_per.ppper.values, color='dodgerblue',
+             label='% PP > p95', linewidth=2)
+
+ax2.set_ylim(0, 25)
+ax.set_ylim(0, 5)
+ax2.scatter(35, anio_per.loc[anio_per['anio']==1995].txper.values, color='red')
+ax2.scatter(35,anio_per.loc[anio_per['anio']==1995].tmper.values, color='green')
+ax2.annotate('1995',(33.5, anio_per.loc[anio_per['anio']==1995].tmper.values+1))
+
+ax.bar(35, anio_per.loc[anio_per['anio']==1995].ppper.values, color='blue')
+import matplotlib.patches as mpatches
+ax2.legend(loc='upper right')
+ppb = mpatches.Patch(color='dodgerblue', label='% PP > p95')
+ax.legend(handles=[ppb], loc='upper right', bbox_to_anchor=(.83,1))
 plt.show()
+#
+# 6 y 7 -----------------------------------------------------------------------#
+for i in range(1960,2022):
+    aux = jn.loc[jn['anio'] == i]
+    tx_c_m = 0
+    tm_c_m = 0
+    pp_c_m = 0
+    tx2_c_m = 0
+    tm2_c_m = 0
+    for m in range(1,13):
+        tx_count = 0
+        tm_count = 0
+        pp_count = 0
+        tx2_count = 0
+        tm2_count = 0
+        for d in range(1, 32):
+            try:
+                aux_d = aux.loc[(aux['mes'] == m) & (aux['dia'] == d)]
+
+                txaux = aux_d.tx.values[0] >= 32
+                tmaux = aux_d.tm.values[0] >= 20
+                ppaux = aux_d.pp.values[0] >= 10
+
+                txaux2 = aux_d.tx.values[0] <= 10
+                tmaux2 = aux_d.tm.values[0] <= 0
+
+                if txaux:
+                    tx_count += 1
+
+                if tmaux:
+                    tm_count += 1
+
+                if ppaux:
+                    pp_count += 1
+
+                if txaux2:
+                    tx2_count += 1
+
+                if tmaux2:
+                    tm2_count += 1
+
+            except:
+                pass
+
+        tx_c_m += tx_count
+        tm_c_m += tm_count
+        pp_c_m += pp_count
+        tx2_c_m += tx2_count
+        tm2_c_m += tm2_count
+
+    aux2 = pd.DataFrame({'anio':[i],
+                         'txper':[np.round(100*tx_c_m/365, 2)],
+                         'tmper':[np.round(100*tm_c_m/365, 2)],
+                         'ppper':[np.round(100*pp_c_m/365, 2)],
+                         'txper2': [np.round(100 * tx2_c_m / 365, 2)],
+                         'tmper2': [np.round(100 * tm2_c_m / 365, 2)]})
+
+    if i == 1960:
+        anio_per = aux2
+    else:
+        anio_per = pd.concat([anio_per, aux2], axis=0)
+
+
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+txl = ax2.plot(np.arange(0, 62), anio_per.txper.values, color='firebrick',
+               label='% Tx > 32ºC', linewidth=2)
+tml= ax2.plot(np.arange(0, 62), anio_per.tmper.values, color='limegreen',
+              label='% Tm > 20ºC', linewidth=2)
+ppb = ax.bar(np.arange(0, 62), anio_per.ppper.values, color='dodgerblue',
+             label='% PP > 10 mm', linewidth=2)
+
+ax2.set_ylim(-10, 20)
+ax.set_ylim(0, 30)
+import matplotlib.patches as mpatches
+ax2.legend(loc='upper right')
+ppb = mpatches.Patch(color='dodgerblue', label='% PP > 10 mm')
+ax.legend(handles=[ppb], loc='upper right', bbox_to_anchor=(.83,1))
+plt.show()
+
+
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+txl = ax.plot(np.arange(0, 62), anio_per.txper2.values, color='firebrick',
+               label='% Tx < 10ºC', linewidth=2)
+tml= ax.plot(np.arange(0, 62), anio_per.tmper2.values, color='limegreen',
+              label='% Tm < 0ºC', linewidth=2)
+
+ax.set_ylim(0, 20)
+ax.legend(loc='upper right')
+plt.show()
+
+# 8 ---------------------------------------------------------------------------#
+# se calcularon
+# FD (frost days) tm<0
+# TR (tropical nights) tm>20
+# TN10p TX90p
+# R10mm
+
