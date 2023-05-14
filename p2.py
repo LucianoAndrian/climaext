@@ -844,3 +844,116 @@ plt.show()
 # TN10p TX90p
 # R10mm
 
+# Parte 2 ---------------------------------------------------------------------#
+# R no anda, no quiere, no puede, quien sabe.
+from scipy import stats
+from scipy.stats import genextreme as gev
+from pyextremes import EVA, get_extremes
+
+jn2 = jn[['dia','mes', 'anio', 'tx', 'tm']]
+jn2 = jn2.loc[jn2['anio']>1959]
+jn2['date'] = pd.to_datetime(
+    dict(year=jn2.anio, month=jn2.mes, day=jn2.dia))
+
+# a.
+jn2tx = jn2.loc[jn2['mes']==1]
+jn2tm = jn2.loc[jn2['mes']==7]
+
+txserie = jn2tx['tx'].squeeze()
+txserie = txserie.set_axis(pd.to_datetime(jn2tx['date'].values))
+
+tmserie = jn2tm['tm'].squeeze()
+tmserie = tmserie.set_axis(pd.to_datetime(jn2tm['date'].values))
+
+txx = get_extremes( ts=txserie, method="BM", extremes_type="high")
+plt.plot(jn2.date, jn2.tx)
+plt.scatter(txx.index, txx, c='red')
+plt.show()
+
+tmn = get_extremes( ts=tmserie, method="BM", extremes_type="low",
+                    errors='ignore')
+plt.plot(jn2.date, jn2.tm)
+plt.scatter(tmn.index, tmn, c='red')
+plt.show()
+
+# b c -------------------------------------------------------------------------#
+#tx
+modeltx = EVA(txserie.loc[~np.isnan(txserie)])
+modeltx.get_extremes(method="BM", block_size="365.2425D", extremes_type="high")
+modeltx.fit_model()
+# periodos de retorno
+summarytx = modeltx.get_summary( return_period=[2, 10, 50, 100], alpha=0.95,
+                             n_samples=1000) # estima la sig. con bootstrap
+print(summarytx)
+modeltx.plot_diagnostic(alpha=0.95)
+plt.show()
+
+# tn
+modeltm = EVA(tmserie.loc[~np.isnan(tmserie)])
+modeltm.get_extremes(method="BM", block_size="365.2425D", extremes_type="low",
+                     errors='ignore')
+modeltm.fit_model()
+# periodos de retorno
+summarytm = modeltm.get_summary( return_period=[2, 10, 50, 100], alpha=0.95,
+                             n_samples=1000) # estima la sig. con bootstrap
+print(summarytm)
+modeltm.plot_diagnostic(alpha=0.95)
+plt.show()
+# 2 KS con bootstrap ----------------------------------------------------------#
+# TXx
+try: # Puede pasar que la distribucion no se ajuste a genextreme y no tiene c
+    c = list((modeltx.distribution.mle_parameters.values()))[0]
+    loc = list((modeltx.distribution.mle_parameters.values()))[1]
+    scale = list((modeltx.distribution.mle_parameters.values()))[2]
+except:
+    print('FALTA UN PARAMETRO!')
+
+kstx = stats.kstest(modeltx.extremes.values, 'genextreme',
+                    args=(c, loc, scale)).statistic
+# Bootstrap
+gevds = gev(c, loc, scale)
+ks_bt_tx = []
+for n in range(5000):
+    # random a partir de la original
+    aux = gevds.rvs(size=len(model.extremes.values))
+    gf2 = gev.fit(aux)  # gev
+    # ks test
+    ks_test = stats.kstest(aux, 'genextreme', args=(gf2[0], gf2[1], gf2[2]))
+    ks_bt_tx.append(ks_test.statistic)
+
+pbt_tx = 100*sum(ks_bt_tx > kstx)/5000
+
+plt.hist(ks_bt_tx, bins=10,rwidth=1)
+plt.show()
+
+# TNn
+try:
+    c = list((modeltm.distribution.mle_parameters.values()))[0]
+    loc = list((modeltm.distribution.mle_parameters.values()))[1]
+    scale = list((modeltm.distribution.mle_parameters.values()))[2]
+except:
+    print('FALTA UN PARAMETRO!')
+
+kstm = stats.kstest(modeltm.extremes.values, 'genextreme',
+                    args=(c, loc, scale)).statistic
+# Bootstrap
+gevds = gev(c, loc, scale)
+ks_bt_tm = []
+for n in range(5000):
+    # random a partir de la original
+    aux = gevds.rvs(size=len(model.extremes.values))
+    gf2 = gev.fit(aux)  # gev
+    # ks test
+    ks_test = stats.kstest(aux, 'genextreme', args=(gf2[0], gf2[1], gf2[2]))
+    ks_bt_tm.append(ks_test.statistic)
+
+pbt_tm = 100*sum(ks_bt_tm > kstm)/5000
+
+plt.hist(ks_bt_tm, bins=50,rwidth=1)
+plt.show()
+
+################################################################################
+################################################################################
+
+
+
