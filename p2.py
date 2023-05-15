@@ -6,11 +6,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as mticker
 #------------------------------------------------------------------------------#
 data_dir = '/home/luciano.andrian/doc/climaext/p2/data/'
 out_dir = '/home/luciano.andrian/doc/climaext/p2/salidas/'
 save = False
-dpi = 100
+dpi = 50
 #------------------------------------------------------------------------------#
 # Funciones
 def SelectAreas(df, low, top, n_col=0):
@@ -206,76 +208,83 @@ def DetecPeriodsx3(df):
     except:
         return []
 
-def plotperiods(anio, titulo, name_fig, dpi, save,
+def plotperiods(anio, perc, titulo, name_fig, dpi, save,
                 anioper_mc, anioper_ec, anioper_mc_tm, anioper_ec_tm,
-                anioper_mf, anioper_ef):
+                anioper_mf, anioper_ef, xlabel, ylabel):
     fig = plt.figure(figsize=(10, 5), dpi=dpi)
     ax = fig.add_subplot(111)
 
-    plt.fill_between(x=np.linspace(1, 365, 365),
-                     y1=perc_t['tx_99'].values, y2=perc_t['tm_01'].values,
+    plt.fill_between(x=perc['date'].values,
+                     y1=perc['tx_99'].values, y2=perc['tm_01'].values,
                      color='#B5B5B5', alpha=1, label='p01-p99', linewidth=0.0)
 
-    plt.fill_between(x=np.linspace(1, 365, 365),
-                     y1=perc_t['tx_9'].values, y2=perc_t['tm_1'].values,
+    plt.fill_between(x=perc['date'].values,
+                     y1=perc['tx_9'].values, y2=perc['tm_1'].values,
                      color='#F9EEEE', alpha=1, label='p10-p90', linewidth=0.0)
-    # 2020
-    ax.plot(anio['dj'], anio['tx'].values, label='2020', color='k', linewidth=1)
-    ax.plot(anio['dj'], anio['tm'].values, label='2020', color='blue',
+
+    ax.plot(anio['date'].values, anio['tx'].values, label='Tx', color='k',
             linewidth=1)
+    ax.plot(anio['date'].values, anio['tm'].values, label='Tn',
+            color='blue', linewidth=1)
 
     try:
-        ax.scatter(anioper_mc['dj'], anioper_mc['tx'].values,
+        ax.scatter(anioper_mc['date'].values, anioper_mc['tx'].values,
                    label='Muy Calido',
                    color='magenta', linewidth=3)
     except:
         pass
 
     try:
-        ax.scatter(anioper_ec['dj'], anioper_ec['tx'].values,
+        ax.scatter(anioper_ec['date'].values, anioper_ec['tx'].values,
                    label='Ext. Calido',
                    color='red', linewidth=3)
     except:
         pass
 
     try:
-        ax.scatter(anioper_mc_tm['dj'], anioper_mc_tm['tm'].values,
+        ax.scatter(anioper_mc_tm['date'].values, anioper_mc_tm['tm'].values,
                    label='Muy Calido Tn',
                    color='coral', linewidth=3)
     except:
         pass
 
     try:
-        ax.scatter(anioper_ec_tm['dj'], anioper_ec_tm['tm'].values,
+        ax.scatter(anioper_ec_tm['date'].values, anioper_ec_tm['tm'].values,
                    label='Ext. Calido Tn',
                    color='orange', linewidth=3)
     except:
         pass
 
     try:
-        ax.scatter(anioper_mf['dj'], anioper_mf['tm'].values, label='Muy Frio',
+        ax.scatter(anioper_mf['date'].values, anioper_mf['tm'].values,
+                   label='Muy Frio',
                    color='k', linewidth=3)
     except:
         pass
 
     try:
-        ax.scatter(anioper_ef['dj'], anioper_ef['tm'].values, label='Ext. Frio',
+        ax.scatter(anioper_ef['date'].values, anioper_ef['tm'].values,
+                   label='Ext. Frio',
                    color='purple', linewidth=3)
     except:
         pass
 
-    #setear ejes y titulo
-    print(titulo)
-
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax.set_title(titulo)
+    ax.set_ylabel(xlabel)
+    ax.set_xlabel(ylabel)
+    ax.grid(alpha=0.5)
     plt.legend()
+    plt.tight_layout()
     if save:
         plt.savefig(out_dir + name_fig +'.jpg')
-        print('Save')
         plt.close('all')
     else:
         plt.show()
 
-def plotItem3c(anio, titulo, dpi, save, per_pp, anioacum):
+def plotItem3c(anio, titulo, dpi, save, per_pp, anioacum,
+               xlabel, ylabel, name_fig):
     fig = plt.figure(figsize=(10, 5), dpi=dpi)
     ax = fig.add_subplot(111)
 
@@ -305,15 +314,38 @@ def plotItem3c(anio, titulo, dpi, save, per_pp, anioacum):
             ax.hlines(y=anioacum.ppa.values[dm], xmin=diasmeses[dm - 1],
                       xmax=diasmeses[dm], color='indigo', linewidth=2)
 
-    print(titulo)
-    #setar indices
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax.set_title(titulo)
+    ax.set_ylabel(xlabel)
+    ax.set_xlabel(ylabel)
+    ax.grid(alpha=0.5)
     plt.legend()
+    plt.tight_layout()
+
     if save:
         plt.savefig(out_dir + name_fig +'.jpg')
         print('Save')
         plt.close('all')
     else:
         plt.show()
+
+def adddate(df2, anioaux=None):
+    try:
+        df = df2.copy()
+        try:
+            df.anio
+        except:
+            df['anio'] = anioaux
+
+        df['date'] = pd.to_datetime(
+            dict(year=df.anio, month=df.mes, day=df.dia))
+        return df
+    except:
+        return []
+
+
+
 #------------------------------------------------------------------------------#
 data = pd.read_csv(data_dir + 'estaciones_1959_2020.csv', sep=',', header=None)
 data_2021 = pd.read_csv(data_dir + 'estaciones_2021.csv', sep=',', header=None)
@@ -543,87 +575,153 @@ a20 = a20.drop(index[0])
 a20['dj'] = range(1,366)
 a21 = jn.loc[jn['anio']==2021]
 a21['dj'] = range(1,366)
-
-# tx
+perc_t2020 = adddate(perc_t,2020)
+perc_t2021 = adddate(perc_t,2021)
+#------------------------------------------------------------------------------#
+# tx 2020 ---------------------------------------------------------------------#
 fig = plt.figure(figsize=(10, 5), dpi=dpi)
 ax = fig.add_subplot(111)
 
-plt.fill_between(x=np.linspace(1,365,365),
+plt.fill_between(x=perc_t2020['date'],
                  y1=perc_t['tx_99'].values, y2=perc_t['tx_01'].values,
-                 color='#FF735B', alpha=1, label='p01-p99', linewidth=0.0)
+                 color='#FF735B', alpha=0.9, label='p01-p99', linewidth=0.0)
 
-plt.fill_between(x=np.linspace(1,365,365),
+plt.fill_between(x=perc_t2020['date'],
                  y1=perc_t['tx_9'].values, y2=perc_t['tx_1'].values,
-                 color='#FFCFC2', alpha=1, label='p10-p90', linewidth=0.0)
-# 2020
-ax.plot(a20['tx'].values, label='2020', color='k', linewidth=3)
-# 2021
-ax.plot(a21['tx'].values, label='2021', color='#0500DE', linewidth=3)
-
-#setear ejes y fechas en x
+                 color='#FFCFC2', alpha=0.7, label='p10-p90', linewidth=0.0)
+ax.plot(perc_t2020['date'].values, a20['tx'].values, label='2020',
+        color='k', linewidth=2)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax.set_title('Tx 2020')
+ax.set_ylabel('Temp. [ºC]')
+ax.set_xlabel('Fecha')
+ax.grid(alpha=0.5)
 plt.legend()
+plt.tight_layout()
 if save:
-    plt.savefig(out_dir + '_3a_tx.jpg')
+    plt.savefig(out_dir + '_3a_tx2020.jpg')
     print('Save')
     plt.close('all')
 else:
     plt.show()
 
-# tm
+# 2021 ------------------------------------------------------------------------#
 fig = plt.figure(figsize=(10, 5), dpi=dpi)
 ax = fig.add_subplot(111)
 
-plt.fill_between(x=np.linspace(1,365,365),
-                 y1=perc_t['tm_99'].values, y2=perc_t['tm_01'].values,
-                 color='#1BBAC0', alpha=1, label='p01-p99', linewidth=0.0)
-
-plt.fill_between(x=np.linspace(1,365,365),
-                 y1=perc_t['tm_9'].values, y2=perc_t['tm_1'].values,
-                 color='#BEDEDE', alpha=1, label='p10-p90', linewidth=0.0)
-# 2020
-ax.plot(a20['tm'].values, label='2020', color='k', linewidth=3)
-# 2021
-ax.plot(a21['tm'].values, label='2021', color='#FF0053', linewidth=3)
-
-#setear ejes y fechas en x
+plt.fill_between(x=perc_t2021['date'],
+                 y1=perc_t['tx_99'].values, y2=perc_t['tx_01'].values,
+                 color='#FF735B', alpha=0.9, label='p01-p99', linewidth=0.0)
+plt.fill_between(x=perc_t2021['date'],
+                 y1=perc_t['tx_9'].values, y2=perc_t['tx_1'].values,
+                 color='#FFCFC2', alpha=0.7, label='p10-p90', linewidth=0.0)
+ax.plot(perc_t2021['date'].values, a21['tx'].values, label='2021',
+        color='k', linewidth=2)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax.set_title('Tx 2021')
+ax.set_ylabel('Temp. [ºC]')
+ax.set_xlabel('Fecha')
+ax.grid(alpha=0.5)
 plt.legend()
+plt.tight_layout()
 if save:
-    plt.savefig(out_dir + '_3a_tm.jpg')
+    plt.savefig(out_dir + '_3a_tx2021.jpg')
     print('Save')
     plt.close('all')
 else:
     plt.show()
 
+#------------------------------------------------------------------------------#
+# tm 2020 ---------------------------------------------------------------------#
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+
+plt.fill_between(x=perc_t2020['date'].values,
+                 y1=perc_t['tm_99'].values, y2=perc_t['tm_01'].values,
+                 color='#1BBAC0', alpha=0.9, label='p01-p99', linewidth=0.0)
+plt.fill_between(x=perc_t2020['date'].values,
+                 y1=perc_t['tm_9'].values, y2=perc_t['tm_1'].values,
+                 color='#BEDEDE', alpha=0.9, label='p10-p90', linewidth=0.0)
+ax.plot(perc_t2020['date'].values, a20['tm'].values, label='2020',
+        color='k', linewidth=3)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax.set_title('Tn 2020')
+ax.set_ylabel('Temp. [ºC]')
+ax.set_xlabel('Fecha')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+if save:
+    plt.savefig(out_dir + '_3a_tn2020.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
+
+# 2021 ------------------------------------------------------------------------#
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+
+plt.fill_between(x=perc_t2021['date'].values,
+                 y1=perc_t['tm_99'].values, y2=perc_t['tm_01'].values,
+                 color='#1BBAC0', alpha=0.9, label='p01-p99', linewidth=0.0)
+plt.fill_between(x=perc_t2021['date'].values,
+                 y1=perc_t['tm_9'].values, y2=perc_t['tm_1'].values,
+                 color='#BEDEDE', alpha=0.9, label='p10-p90', linewidth=0.0)
+ax.plot(perc_t2021['date'].values, a21['tm'].values, label='2020',
+        color='k', linewidth=3)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax.set_title('Tn 2021')
+ax.set_ylabel('Temp. [ºC]')
+ax.set_xlabel('Fecha')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+if save:
+    plt.savefig(out_dir + '_3a_tn2021.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
+# -----------------------------------------------------------------------------#
 # 3b --------------------------------------------------------------------------#
 # 2020
 meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef\
     = PeriodosTemp(a20, perc_t)
 
-a20per_mc = DetecPeriodsx3(meses_mc)
-a20per_ec = DetecPeriodsx3(meses_ec)
-a20per_mc_tm = DetecPeriodsx3(meses_mc_tm)
-a20per_ec_tm = DetecPeriodsx3(meses_ec_tm)
-a20per_mf = DetecPeriodsx3(meses_mf)
-a20per_ef = DetecPeriodsx3(meses_ef)
+a20 = adddate(a20,2020)
+a20per_mc = adddate(DetecPeriodsx3(meses_mc),2020)
+a20per_ec = adddate(DetecPeriodsx3(meses_ec),2020)
+a20per_mc_tm = adddate(DetecPeriodsx3(meses_mc_tm),2020)
+a20per_ec_tm = adddate(DetecPeriodsx3(meses_ec_tm),2020)
+a20per_mf = adddate(DetecPeriodsx3(meses_mf),2020)
+a20per_ef = adddate(DetecPeriodsx3(meses_ef),2020)
 
-plotperiods(a20, 'titulo', 'name_fig', 100, False,
+plotperiods(a20, perc_t2020, 'Períodos T - 2020', 'per2020', dpi, save,
                 a20per_mc, a20per_ec, a20per_mc_tm, a20per_ec_tm,
-                a20per_mf, a20per_ef)
+                a20per_mf, a20per_ef,'T[ºC]', 'Fecha')
 
 # 2021
 meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef\
     = PeriodosTemp(a21, perc_t)
 
-a21per_mc = DetecPeriodsx3(meses_mc)
-a21per_ec = DetecPeriodsx3(meses_ec)
-a21per_mc_tm = DetecPeriodsx3(meses_mc_tm)
-a21per_ec_tm = DetecPeriodsx3(meses_ec_tm)
-a21per_mf = DetecPeriodsx3(meses_mf)
-a21per_ef = DetecPeriodsx3(meses_ef)
+a21 = adddate(a21, 2021)
+a21per_mc = adddate(DetecPeriodsx3(meses_mc),2021)
+a21per_ec = adddate(DetecPeriodsx3(meses_ec),2021)
+a21per_mc_tm = adddate(DetecPeriodsx3(meses_mc_tm),2021)
+a21per_ec_tm = adddate(DetecPeriodsx3(meses_ec_tm),2021)
+a21per_mf = adddate(DetecPeriodsx3(meses_mf),2021)
+a21per_ef = adddate(DetecPeriodsx3(meses_ef),2021)
 
-plotperiods(a21, 'titulo', 'name_fig', 100, False,
+plotperiods(a21, perc_t2021, 'Períodos T - 2021', 'per2021', dpi, save,
                 a21per_mc, a21per_ec, a21per_mc_tm, a21per_ec_tm,
-                a21per_mf, a21per_ef)
+                a21per_mf, a21per_ef,'T[ºC]', 'Fecha')
 
 # 3cd -------------------------------------------------------------------------#
 def MonthMeanPP(data):
@@ -639,9 +737,10 @@ def MonthMeanPP(data):
 
 a20_pp_mm = MonthMeanPP(a20)
 a21_pp_mm = MonthMeanPP(a21)
-
-plotItem3c(a20, 'titulo', dpi, False, per_pp, a20_pp_mm)
-plotItem3c(a21, 'titulo', dpi, False, per_pp, a21_pp_mm)
+plotItem3c(a20, 'PP- 2020', dpi, save, per_pp, a20_pp_mm,
+               'PP [mm]', 'Fecha', '3cd_2020')
+plotItem3c(a21, 'PP- 2020', dpi, save, per_pp, a21_pp_mm,
+               'PP [mm]', 'Fecha', '3cd_2021')
 
 # 3e --------------------------------------------------------------------------#
 for i in range(1981,2011):
@@ -662,14 +761,25 @@ ax.plot(a20.dj.values, a20.fillna(0).transform('cumsum').pp.values,
 ax.plot(a20.dj.values,a21.fillna(0).transform('cumsum').pp.values,
            label='2021', linewidth=2)
 
-#setear ejes y fechas en x
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+ax.set_title('PP Acumulada')
+ax.set_ylabel('PP [mm]')
+ax.set_xlabel('Fecha')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+
 plt.legend()
 if save:
-    plt.savefig(out_dir + '_3a_tx.jpg')
+    plt.savefig(out_dir + '3e.jpg')
     print('Save')
     plt.close('all')
 else:
     plt.show()
+
+# -----------------------------------------------------------------------------#
 # 4 y 5 -----------------------------------------------------------------------#
 for i in range(1960,2022):
     aux = jn.loc[jn['anio'] == i]
@@ -721,7 +831,6 @@ for i in range(1960,2022):
         anio_per = pd.concat([anio_per, aux2], axis=0)
 
 
-
 fig = plt.figure(figsize=(10, 5), dpi=dpi)
 ax = fig.add_subplot(111)
 ax2 = ax.twinx()
@@ -743,7 +852,23 @@ import matplotlib.patches as mpatches
 ax2.legend(loc='upper right')
 ppb = mpatches.Patch(color='dodgerblue', label='% PP > p95')
 ax.legend(handles=[ppb], loc='upper right', bbox_to_anchor=(.83,1))
-plt.show()
+ax.set_xticks(range(0, 62), np.arange(1960, 2022))
+import matplotlib.ticker as mticker
+myLocator = mticker.MultipleLocator(base=5)
+ax.xaxis.set_major_locator(myLocator)
+ax2.set_ylabel('% dias T')
+ax.set_ylabel('% dia PP')
+ax.set_xlabel('Años')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+if save:
+    plt.savefig(out_dir + '4_5.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 #
 # 6 y 7 -----------------------------------------------------------------------#
 for i in range(1960,2022):
@@ -823,7 +948,22 @@ import matplotlib.patches as mpatches
 ax2.legend(loc='upper right')
 ppb = mpatches.Patch(color='dodgerblue', label='% PP > 10 mm')
 ax.legend(handles=[ppb], loc='upper right', bbox_to_anchor=(.83,1))
-plt.show()
+ax.set_xticks(range(0, 62), np.arange(1960, 2022))
+myLocator = mticker.MultipleLocator(base=5)
+ax.xaxis.set_major_locator(myLocator)
+ax.set_ylabel('dias PP')
+ax2.set_ylabel('dias T')
+ax.set_xlabel('Años')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+if save:
+    plt.savefig(out_dir + '6.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 
 fig = plt.figure(figsize=(10, 5), dpi=dpi)
@@ -833,9 +973,22 @@ txl = ax.plot(np.arange(0, 62), anio_per.txper2.values, color='firebrick',
 tml= ax.plot(np.arange(0, 62), anio_per.tmper2.values, color='limegreen',
               label='% Tm < 0ºC', linewidth=2)
 
-ax.set_ylim(0, 20)
+ax.set_ylim(0, 15)
 ax.legend(loc='upper right')
-plt.show()
+myLocator = mticker.MultipleLocator(base=5)
+ax.xaxis.set_major_locator(myLocator)
+ax.set_ylabel('dias T')
+ax.set_xlabel('Años')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.legend()
+if save:
+    plt.savefig(out_dir + '7.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 # 8 ---------------------------------------------------------------------------#
 # se calcularon
@@ -866,15 +1019,39 @@ tmserie = jn2tm['tm'].squeeze()
 tmserie = tmserie.set_axis(pd.to_datetime(jn2tm['date'].values))
 
 txx = get_extremes( ts=txserie, method="BM", extremes_type="high")
-plt.plot(jn2.date, jn2.tx)
-plt.scatter(txx.index, txx, c='red')
-plt.show()
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax.plot(jn2.date, jn2.tx, label='TX')
+ax.scatter(txx.index, txx, c='red', label='TXx', s=10) # SET SIZE!!!!!
+ax.set_ylabel('T[ºC]')
+ax.set_xlabel('Años')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+if save:
+    plt.savefig(out_dir + 'parte2_1a_TX.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 tmn = get_extremes( ts=tmserie, method="BM", extremes_type="low",
                     errors='ignore')
-plt.plot(jn2.date, jn2.tm)
-plt.scatter(tmn.index, tmn, c='red')
-plt.show()
+fig = plt.figure(figsize=(10, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax.plot(jn2.date, jn2.tm, label='TN')
+ax.scatter(tmn.index, tmn, c='red', label='TNn', s=20) # SET SIZE!!!!!
+ax.set_ylabel('T[ºC]')
+ax.set_xlabel('Años')
+ax.grid(alpha=0.5)
+plt.legend()
+plt.tight_layout()
+if save:
+    plt.savefig(out_dir + 'parte2_1aTN.jpg')
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 # b c -------------------------------------------------------------------------#
 #tx
@@ -886,7 +1063,12 @@ summarytx = modeltx.get_summary( return_period=[2, 10, 50, 100], alpha=0.95,
                              n_samples=1000) # estima la sig. con bootstrap
 print(summarytx)
 modeltx.plot_diagnostic(alpha=0.95)
-plt.show()
+if save:
+    plt.savefig(out_dir + 'gevTX.jpg', dpi=300)
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 # tn
 modeltm = EVA(tmserie.loc[~np.isnan(tmserie)])
@@ -898,7 +1080,12 @@ summarytm = modeltm.get_summary( return_period=[2, 10, 50, 100], alpha=0.95,
                              n_samples=1000) # estima la sig. con bootstrap
 print(summarytm)
 modeltm.plot_diagnostic(alpha=0.95)
-plt.show()
+if save:
+    plt.savefig(out_dir + 'gevTN.jpg', dpi=300)
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 # 2 KS con bootstrap ----------------------------------------------------------#
 # TXx
 try: # Puede pasar que la distribucion no se ajuste a genextreme y no tiene c
@@ -943,7 +1130,7 @@ for n in range(5000):
     # random a partir de la original
     aux = gevds.rvs(size=len(model.extremes.values))
     gf2 = gev.fit(aux)  # gev
-    # ks test
+    # ks tests
     ks_test = stats.kstest(aux, 'genextreme', args=(gf2[0], gf2[1], gf2[2]))
     ks_bt_tm.append(ks_test.statistic)
 
