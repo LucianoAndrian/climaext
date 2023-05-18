@@ -11,8 +11,8 @@ import matplotlib.ticker as mticker
 #------------------------------------------------------------------------------#
 data_dir = '/home/luciano.andrian/doc/climaext/p2/data/'
 out_dir = '/home/luciano.andrian/doc/climaext/p2/salidas/'
-save = False
-dpi = 50
+save = True
+dpi = 200
 #------------------------------------------------------------------------------#
 # Funciones
 def SelectAreas(df, low, top, n_col=0):
@@ -343,9 +343,6 @@ def adddate(df2, anioaux=None):
         return df
     except:
         return []
-
-
-
 #------------------------------------------------------------------------------#
 data = pd.read_csv(data_dir + 'estaciones_1959_2020.csv', sep=',', header=None)
 data_2021 = pd.read_csv(data_dir + 'estaciones_2021.csv', sep=',', header=None)
@@ -952,7 +949,7 @@ ax.set_xticks(range(0, 62), np.arange(1960, 2022))
 myLocator = mticker.MultipleLocator(base=5)
 ax.xaxis.set_major_locator(myLocator)
 ax.set_ylabel('dias PP')
-ax2.set_ylabel('dias T')
+ax2.set_ylabel('% dias T')
 ax.set_xlabel('Años')
 ax.grid(alpha=0.5)
 plt.legend()
@@ -977,7 +974,7 @@ ax.set_ylim(0, 15)
 ax.legend(loc='upper right')
 myLocator = mticker.MultipleLocator(base=5)
 ax.xaxis.set_major_locator(myLocator)
-ax.set_ylabel('dias T')
+ax.set_ylabel('% dias T')
 ax.set_xlabel('Años')
 ax.grid(alpha=0.5)
 plt.legend()
@@ -1019,12 +1016,13 @@ tmserie = jn2tm['tm'].squeeze()
 tmserie = tmserie.set_axis(pd.to_datetime(jn2tm['date'].values))
 
 txx = get_extremes( ts=txserie, method="BM", extremes_type="high")
-fig = plt.figure(figsize=(10, 5), dpi=dpi)
+fig = plt.figure(figsize=(12, 5), dpi=dpi)
 ax = fig.add_subplot(111)
-ax.plot(jn2.date, jn2.tx, label='TX')
-ax.scatter(txx.index, txx, c='red', label='TXx', s=10) # SET SIZE!!!!!
+ax.plot(jn2.date, jn2.tx, label='TX', color='coral', alpha=0.8)
+ax.scatter(txx.index, txx, c='firebrick', label='TXx Enero', s=60, zorder=8)
 ax.set_ylabel('T[ºC]')
 ax.set_xlabel('Años')
+ax.set_title('TX Enero - 1960-2021')
 ax.grid(alpha=0.5)
 plt.legend()
 plt.tight_layout()
@@ -1037,12 +1035,13 @@ else:
 
 tmn = get_extremes( ts=tmserie, method="BM", extremes_type="low",
                     errors='ignore')
-fig = plt.figure(figsize=(10, 5), dpi=dpi)
+fig = plt.figure(figsize=(12, 5), dpi=dpi)
 ax = fig.add_subplot(111)
-ax.plot(jn2.date, jn2.tm, label='TN')
-ax.scatter(tmn.index, tmn, c='red', label='TNn', s=20) # SET SIZE!!!!!
+ax.plot(jn2.date, jn2.tm, label='TN', color='dodgerblue', alpha=0.7)
+ax.scatter(tmn.index, tmn, c='purple', label='TNn Julio', s=60, zorder=2) # SET SIZE!!!!!
 ax.set_ylabel('T[ºC]')
 ax.set_xlabel('Años')
+ax.set_title('TN - 1960-2021')
 ax.grid(alpha=0.5)
 plt.legend()
 plt.tight_layout()
@@ -1102,7 +1101,7 @@ gevds = gev(c, loc, scale)
 ks_bt_tx = []
 for n in range(5000):
     # random a partir de la original
-    aux = gevds.rvs(size=len(model.extremes.values))
+    aux = gevds.rvs(size=len(modeltx.extremes.values))
     gf2 = gev.fit(aux)  # gev
     # ks test
     ks_test = stats.kstest(aux, 'genextreme', args=(gf2[0], gf2[1], gf2[2]))
@@ -1110,8 +1109,18 @@ for n in range(5000):
 
 pbt_tx = 100*sum(ks_bt_tx > kstx)/5000
 
-plt.hist(ks_bt_tx, bins=10,rwidth=1)
-plt.show()
+fig = plt.figure(figsize=(6, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax.hist(ks_bt_tx, bins=50,rwidth=1, color='coral', alpha=0.8)
+ax.axvline(x=kstx, ymin=0, ymax=300, linewidth=2, color='firebrick')
+ax.set_xlabel('D')
+ax.set_ylabel('Frecuencia Absoluta')
+if save:
+    plt.savefig(out_dir + 'histboot_tx.jpg', dpi=dpi)
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
 
 # TNn
 try:
@@ -1128,7 +1137,7 @@ gevds = gev(c, loc, scale)
 ks_bt_tm = []
 for n in range(5000):
     # random a partir de la original
-    aux = gevds.rvs(size=len(model.extremes.values))
+    aux = gevds.rvs(size=len(modeltm.extremes.values))
     gf2 = gev.fit(aux)  # gev
     # ks tests
     ks_test = stats.kstest(aux, 'genextreme', args=(gf2[0], gf2[1], gf2[2]))
@@ -1136,11 +1145,21 @@ for n in range(5000):
 
 pbt_tm = 100*sum(ks_bt_tm > kstm)/5000
 
-plt.hist(ks_bt_tm, bins=50,rwidth=1)
-plt.show()
+fig = plt.figure(figsize=(6, 5), dpi=dpi)
+ax = fig.add_subplot(111)
+ax.hist(ks_bt_tm, bins=50,rwidth=1, color='dodgerblue', alpha=0.7)
+ax.axvline(x=kstm, ymin=0, ymax=300, linewidth=2, color='purple')
+ax.set_xlabel('D')
+ax.set_ylabel('Frecuencia Absoluta')
+if save:
+    plt.savefig(out_dir + 'histboot_tn.jpg', dpi=dpi)
+    print('Save')
+    plt.close('all')
+else:
+    plt.show()
+
 
 ################################################################################
 ################################################################################
-
 
 
