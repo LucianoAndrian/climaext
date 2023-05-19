@@ -971,6 +971,7 @@ tml= ax.plot(np.arange(0, 62), anio_per.tmper2.values, color='limegreen',
               label='% Tm < 0ºC', linewidth=2)
 
 ax.set_ylim(0, 15)
+ax.set_xticks(range(0, 62), np.arange(1960, 2022))
 ax.legend(loc='upper right')
 myLocator = mticker.MultipleLocator(base=5)
 ax.xaxis.set_major_locator(myLocator)
@@ -1071,8 +1072,8 @@ else:
 
 # tn
 modeltm = EVA(tmserie.loc[~np.isnan(tmserie)])
-modeltm.get_extremes(method="BM", block_size="365.2425D", extremes_type="low",
-                     errors='ignore')
+modeltm.get_extremes(method="BM", block_size="365.2425D", errors='ignore',
+                     extremes_type='low')
 modeltm.fit_model()
 # periodos de retorno
 summarytm = modeltm.get_summary( return_period=[2, 10, 50, 100], alpha=0.95,
@@ -1113,6 +1114,10 @@ fig = plt.figure(figsize=(6, 5), dpi=dpi)
 ax = fig.add_subplot(111)
 ax.hist(ks_bt_tx, bins=50,rwidth=1, color='coral', alpha=0.8)
 ax.axvline(x=kstx, ymin=0, ymax=300, linewidth=2, color='firebrick')
+ax.axvline(x=np.quantile(ks_bt_tx, 0.975),
+           ymin=0, ymax=300, linewidth=2, color='red')
+ax.axvline(x=np.quantile(ks_bt_tx, 0.025),
+           ymin=0, ymax=300, linewidth=2, color='red')
 ax.set_xlabel('D')
 ax.set_ylabel('Frecuencia Absoluta')
 if save:
@@ -1123,6 +1128,10 @@ else:
     plt.show()
 
 # TNn
+modeltm = EVA(-1*tmserie.loc[~np.isnan(tmserie)])
+modeltm.get_extremes(method="BM", block_size="365.2425D", errors='ignore',
+                     extremes_type='high')
+modeltm.fit_model()
 try:
     c = list((modeltm.distribution.mle_parameters.values()))[0]
     loc = list((modeltm.distribution.mle_parameters.values()))[1]
@@ -1149,6 +1158,10 @@ fig = plt.figure(figsize=(6, 5), dpi=dpi)
 ax = fig.add_subplot(111)
 ax.hist(ks_bt_tm, bins=50,rwidth=1, color='dodgerblue', alpha=0.7)
 ax.axvline(x=kstm, ymin=0, ymax=300, linewidth=2, color='purple')
+ax.axvline(x=np.quantile(ks_bt_tm, 0.975),
+           ymin=0, ymax=300, linewidth=2, color='red')
+ax.axvline(x=np.quantile(ks_bt_tm, 0.025),
+           ymin=0, ymax=300, linewidth=2, color='red')
 ax.set_xlabel('D')
 ax.set_ylabel('Frecuencia Absoluta')
 if save:
@@ -1157,7 +1170,6 @@ if save:
     plt.close('all')
 else:
     plt.show()
-
 
 ################################################################################
 ################################################################################
