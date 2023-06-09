@@ -23,6 +23,7 @@ data_dir = '/home/luciano.andrian/doc/climaext/p3/ncfiles/'
 out_dir = '/home/luciano.andrian/doc/climaext/p3/salidas/'
 data_dir2 = '/home/luciano.andrian/doc/climaext/p2/data/'
 data_dir3 = '/home/luciano.andrian/doc/climaext/p3/ncfiles2/'
+data_dir4 = '/home/luciano.andrian/doc/climaext/p3/ncfiles_km/'
 
 save = True
 dpi = 300
@@ -677,29 +678,33 @@ for i in range(1960,2022):
                     (perc_t['mes'] == m) & (perc_t['dia'] == d)]
 
                 if m == 1:
-                    txaux = aux_d.tx.values[0] >= aux_d_per.tx_99[0]
-                    tmxaux = aux_d.tm.values[0] >= aux_d_per.tm_99[0]
+                    txaux = (aux_d.tx.values[0] >= aux_d_per.tx_99[0]) & \
+                            (aux_d.tm.values[0] >= aux_d_per.tm_9[0])
 
                     if txaux:
+                        print('calido')
                         if tx_count == 0:
                             dtx = aux_d
                             tx_count = 1
                         else:
                             dtx = pd.concat([dtx, aux_d], axis=0)
 
-                    if tmxaux:
-                        if tmx_count == 0:
-                            dtmx = aux_d
-                            tmx_count = 1
-                        else:
-                            dtmx = pd.concat([dtmx, aux_d], axis=0)
+                    # if tmxaux:
+                    #     if tmx_count == 0:
+                    #         dtmx = aux_d
+                    #         tmx_count = 1
+                    #     else:
+                    #         dtmx = pd.concat([dtmx, aux_d], axis=0)
 
                 else:
 
-                    tmaux = aux_d.tm.values[0] <= aux_d_per.tm_01[0]
-                    txmaux = aux_d.tx.values[0] <= aux_d_per.tx_01[0]
+                    tmaux = (aux_d.tm.values[0] <= aux_d_per.tm_01[0]) & \
+                            (aux_d.tx.values[0] <= aux_d_per.tx_1[0])
+
+                    #txmaux = aux_d.tx.values[0] <= aux_d_per.tx_01[0]
 
                     if tmaux:
+                        print('frio')
                         tmaux = False
                         if tm_count == 0:
                             dtm = aux_d
@@ -707,13 +712,13 @@ for i in range(1960,2022):
                         else:
                             dtm = pd.concat([dtm, aux_d], axis=0)
 
-                    if txmaux:
-                        tmaux = False
-                        if txm_count == 0:
-                            dtxm2 = aux_d
-                            txm_count = 1
-                        else:
-                            dtxm2 = pd.concat([dtxm2, aux_d], axis=0)
+                    # if txmaux:
+                    #     tmaux = False
+                    #     if txm_count == 0:
+                    #         dtxm2 = aux_d
+                    #         txm_count = 1
+                    #     else:
+                    #         dtxm2 = pd.concat([dtxm2, aux_d], axis=0)
 
             except:
                 pass
@@ -729,16 +734,16 @@ for i in range(1960,2022):
         except:
             pass
 
-        try:
-            if tmx_c_m == 0:
-                dtmxm = dtmx
-                tmx_c_m = 1
-                del dtmx
-            else:
-                dtmxm = pd.concat([dtmxm, dtmx], axis=0)
-                del dtmx
-        except:
-            pass
+        # try:
+        #     if tmx_c_m == 0:
+        #         dtmxm = dtmx
+        #         tmx_c_m = 1
+        #         del dtmx
+        #     else:
+        #         dtmxm = pd.concat([dtmxm, dtmx], axis=0)
+        #         del dtmx
+        # except:
+        #     pass
 
         try:
             if tm_c_m == 0:
@@ -751,16 +756,16 @@ for i in range(1960,2022):
         except:
             pass
 
-        try:
-            if txm_c_m == 0:
-                dtxmm = dtxm2
-                txm_c_m = 1
-                del dtxm2
-            else:
-                dtxmm = pd.concat([dtxmm, dtxm2], axis=0)
-                del dtxm2
-        except:
-            pass
+        # try:
+        #     if txm_c_m == 0:
+        #         dtxmm = dtxm2
+        #         txm_c_m = 1
+        #         del dtxm2
+        #     else:
+        #         dtxmm = pd.concat([dtxmm, dtxm2], axis=0)
+        #         del dtxm2
+        # except:
+        #     pass
 
     if i_count_tx == 0:
         try:
@@ -770,13 +775,13 @@ for i in range(1960,2022):
         except:
             pass
 
-    if i_count_tmx == 0:
-        try:
-            tmene = dtmxm
-            del dtmxm
-            i_count_tmx = 1
-        except:
-            pass
+    # if i_count_tmx == 0:
+    #     try:
+    #         tmene = dtmxm
+    #         del dtmxm
+    #         i_count_tmx = 1
+    #     except:
+    #         pass
     if i_count_tm == 0:
         try:
             tmjul = dtmm
@@ -784,13 +789,13 @@ for i in range(1960,2022):
             i_count_tm = 1
         except:
             pass
-    if i_count_txm == 0:
-        try:
-            txjul = dtxmm
-            del dtxmm
-            i_count_txm = 1
-        except:
-            pass
+    # if i_count_txm == 0:
+    #     try:
+    #         txjul = dtxmm
+    #         del dtxmm
+    #         i_count_txm = 1
+    #     except:
+    #         pass
 
 
     else:
@@ -800,11 +805,11 @@ for i in range(1960,2022):
         except:
             pass
 
-        try:
-            tmene = pd.concat([tmene, dtmxm], axis=0)
-            del dtmxm
-        except:
-            pass
+        # try:
+        #     tmene = pd.concat([tmene, dtmxm], axis=0)
+        #     del dtmxm
+        # except:
+        #     pass
 
         try:
             tmjul = pd.concat([tmjul, dtmm], axis=0)
@@ -812,17 +817,17 @@ for i in range(1960,2022):
         except:
             pass
 
-        try:
-            txjul = pd.concat([txjul, dtxmm], axis=0)
-            del dtxmm
-        except:
-            pass
+        # try:
+        #     txjul = pd.concat([txjul, dtxmm], axis=0)
+        #     del dtxmm
+        # except:
+        #     pass
 
 txene = txene.sort_values('tx', ascending=False).head(20)
-tmene = tmene.sort_values('tm', ascending=False).head(20)
+#tmene = tmene.sort_values('tm', ascending=False).head(20)
 
 tmjul = tmjul.sort_values('tm', ascending=True).head(20)
-txjul = txjul.sort_values('tx', ascending=True).head(20)
+#txjul = txjul.sort_values('tx', ascending=True).head(20)
 
 def PPext(meses):
     i_count = 0
@@ -877,15 +882,11 @@ def PPext(meses):
 
     return ppmes
 
-ppjj= PPext([6,7])
+ppjj= PPext([6,7,8])
 ppma= PPext([3,4])
 
 np.savetxt(out_dir + 'txene.txt', txene, fmt='%s')
 np.savetxt(out_dir + 'tmjul.txt', tmjul, fmt='%s')
-np.savetxt(out_dir + 'tmene.txt', tmene, fmt='%s')
-np.savetxt(out_dir + 'txjul.txt', tmjul, fmt='%s')
-
-
 np.savetxt(out_dir + 'ppjj.txt', ppjj, fmt='%s')
 np.savetxt(out_dir + 'ppma.txt', ppma, fmt='%s')
 
@@ -956,3 +957,168 @@ for f in files:
 ################################################################################
 # 4
 from sklearn.cluster import KMeans
+from threadpoolctl import threadpool_limits
+import os
+os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
+
+# funciones kmeans
+
+def SilhScore(X, title='title', name_fig='fig', save=False):
+    from sklearn.metrics import silhouette_score
+
+    with threadpool_limits(limits=1):
+        kmeans_per_k = [KMeans(n_clusters=k, n_init=100,
+                               random_state=666).fit(X)
+                        for k in range(1, 15)]
+
+        silhouette_scores = [silhouette_score(X, model.labels_)
+                             for model in kmeans_per_k[1:]]
+
+    plt.figure(figsize=(8, 3))
+    plt.plot(range(2, 15), silhouette_scores, "bo-")
+    plt.xlabel("$k$", fontsize=14)
+    plt.ylabel("Silhouette score", fontsize=14)
+    plt.title(title)
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
+
+def SSEScore(X, title='title', name_fig='fig', save=False):
+    sse = []
+    with threadpool_limits(limits=1):
+        kmeans_per_k = [KMeans(n_clusters=k, n_init=100,
+                               random_state=666).fit(X)
+                        for k in range(1, 15)]
+
+        sse.append([model.inertia_ for model in kmeans_per_k[1:]])
+
+    plt.figure(figsize=(8, 3))
+    plt.plot(range(2, 15), sse[0], "bo-")
+    plt.xlabel("$k$", fontsize=14)
+    plt.ylabel("SSE", fontsize=14)
+    plt.title(title)
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
+
+    return sse
+
+def KM(data, n_clusters):
+    with threadpool_limits(limits=1):  # con 1 mas rapido q con 40...
+        kmeans = KMeans(
+            n_clusters=n_clusters, n_init=100, random_state=666).fit(data)
+
+        return kmeans.predict(X), kmeans.cluster_centers_
+
+for a, m, nc in zip([2020, 2021], [3,4], [8,6]):
+
+    aux = xr.open_dataset(data_dir4 + 'hgt.' + str(a) + '.nc')
+
+    daily = aux.sel(time=aux.time.dt.month.isin(m), level=850,
+                    lon=slice(270, 320), lat=slice(-20, -60))
+    daily = daily.drop(['time_bnds', 'level'])
+
+    aux = xr.open_dataset(data_dir4 + 'hgt.mon.ltm.1991-2020.nc')
+    mmonth = aux.sel(time=aux.time.dt.month.isin(m), level=850,
+                     lon=slice(270, 320), lat=slice(-20, -60))
+    mmonth = mmonth.drop(
+        ['valid_yr_count', 'climatology_bounds', 'level', 'time'])
+
+    # Anomalia en funcion del mes
+    anom = daily - mmonth.hgt[0, :, :]
+
+    # Para aplicar kmeans
+    X = anom.stack(new=['lon', 'lat']).hgt
+
+    # Scores
+    SSEScore(X, title='SSE',
+             name_fig='SSE_score_' + str(a) + '_mes' + str(m),
+             save=save)
+
+    SilhScore(X, title='Silhouette score',
+              name_fig='Silh_score_' + str(a) + '_mes' + str(m),
+              save=save)
+
+    pred, clusters = KM(X, nc)
+    clusters[3, :].reshape(21, 17).T
+
+    extent = [270, 320, -60, -20]
+    levels = np.arange(-200, 250, 50)
+    levels = [-150, -100, -75, -50, -15, 0, 15, 50, 75, 100, 150]
+    cmap = cbar_t
+    fig_size = [11, 5]
+    xticks = np.arange(270, 330, 10)
+    yticks = np.arange(-60, 0, 20)
+
+    fig, axs = plt.subplots(nrows=2, ncols=4,
+                            subplot_kw={'projection': ccrs.PlateCarree(
+                                central_longitude=180)}, figsize=fig_size,
+                            dpi=dpi)
+
+    crs_latlon = ccrs.PlateCarree()
+    for c in range(0, clusters.shape[0]):
+        if c >= 4:
+            c2 = 1
+            c3 = c - 4
+        else:
+            c2 = 0
+            c3 = c
+
+        aux = clusters[c, :].reshape(21, 17).T
+
+        axs[c2][c3].set_extent(extent, crs=crs_latlon)
+        im = axs[c2][c3].contourf(mmonth.lon, mmonth.lat, aux,
+                                  levels=levels,
+                                  transform=crs_latlon,
+                                  cmap=cmap, extend='both')
+
+        axs[c2][c3].contour(mmonth.lon, mmonth.lat, aux,
+                            linewidths=.8, levels=levels,
+                            transform=crs_latlon,
+                            colors='black')
+
+        color_map = '#4B4B4B'
+        axs[c2][c3].add_feature(cartopy.feature.LAND, facecolor='lightgrey',
+                                edgecolor=color_map)
+        axs[c2][c3].add_feature(cartopy.feature.COASTLINE, linewidth=0.5)
+        axs[c2][c3].coastlines(color=color_map, linestyle='-', alpha=1)
+        axs[c2][c3].gridlines(linewidth=0.3, linestyle='-')
+        axs[c2][c3].set_xticks(xticks, crs=crs_latlon)
+        axs[c2][c3].set_yticks(yticks, crs=crs_latlon)
+        lon_formatter = LongitudeFormatter(zero_direction_label=True)
+        lat_formatter = LatitudeFormatter()
+        axs[c2][c3].xaxis.set_major_formatter(lon_formatter)
+        axs[c2][c3].yaxis.set_major_formatter(lat_formatter)
+        axs[c2][c3].tick_params(labelsize=8)
+        title = 'Cluster ' + str(c + 1)
+        axs[c2][c3].set_title(title, fontsize=15)
+        plt.tight_layout()
+
+    fig.subplots_adjust(right=0.925)
+    pos = fig.add_axes([0.935, 0.2, 0.012, 0.6])
+    cbar = fig.colorbar(im, cax=pos, pad=0.1)
+    if save:
+        plt.savefig(out_dir + 'cluster_' + str(a) + '_' + str(m) + '.jpg', dpi=300)
+        plt.close()
+    else:
+        plt.show()
+
+    fig = plt.figure(figsize=(10, 5), dpi=dpi)
+    ax = fig.add_subplot(111)
+    ax.scatter(np.arange(1,len(pred)+1),pred+1)
+    plt.title('Evolución clusters')
+    ax.set_xlabel('dias')
+    ax.set_ylabel('Cluster')
+    if save:
+        plt.savefig(
+            out_dir + 'evocluster_' + str(a) + '_' + str(m) + '.jpg', dpi=300)
+        plt.close()
+    else:
+        plt.show()
+
