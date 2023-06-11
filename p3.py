@@ -4,6 +4,7 @@
 ################################################################################
 import xarray as xr
 import numpy as np
+from numpy import ma
 import pandas as pd
 import os
 import glob
@@ -25,8 +26,8 @@ data_dir2 = '/home/luciano.andrian/doc/climaext/p2/data/'
 data_dir3 = '/home/luciano.andrian/doc/climaext/p3/ncfiles2/'
 data_dir4 = '/home/luciano.andrian/doc/climaext/p3/ncfiles_km/'
 
-save = True
-dpi = 300
+save = False
+dpi = 50
 ################################################################################
 def SelectFiles(dir):
     files =  glob.glob(dir +'*.nc')
@@ -119,6 +120,90 @@ def Plot(comp, comp_var, levels, save, dpi, title, name_fig, out_dir,
     else:
         plt.show()
 
+def PlotViento(comp, comp_var, px, py, levels, save, dpi, title, name_fig,
+               out_dir, color_map, cmap, contourf, sa):
+
+    import matplotlib.pyplot as plt
+    import cartopy.feature
+    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    import cartopy.crs as ccrs
+
+    if sa:
+        fig_size = (5, 6)
+        extent = [270, 330, -60, 20]
+        xticks = np.arange(270, 330, 10)
+        yticks = np.arange(-60, 40, 20)
+    else:
+        fig_size = (6, 5)
+        extent = [270, 320, -60, -20]
+        xticks = np.arange(270, 320, 10)
+        yticks = np.arange(-60, 0, 20)
+
+    crs_latlon = ccrs.PlateCarree()
+
+    levels_contour = levels.copy()
+    if isinstance(levels, np.ndarray):
+        levels_contour = levels[levels != 0]
+    else:
+        levels_contour.remove(0)
+
+    fig = plt.figure(figsize=fig_size, dpi=dpi)
+    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
+    ax.set_extent(extent, crs=crs_latlon)
+    im = ax.contourf(comp.lon, comp.lat, comp_var, levels=levels,
+                     transform=crs_latlon, cmap=cmap, extend='both')
+
+    cb = plt.colorbar(im, fraction=0.042, pad=0.035, shrink=0.8)
+    if contourf:
+        ax.contour(comp.lon, comp.lat, comp_var, levels=levels,
+                   transform=crs_latlon, cmap=cmap, extend='both')
+
+    cb.ax.tick_params(labelsize=8)
+
+    Q60 = np.percentile(np.sqrt(np.add(np.power(px, 2), np.power(py, 2))), 0)
+    M = np.sqrt(np.add(np.power(px, 2), np.power(py, 2))) < Q60
+    # mask array
+    px_mask = ma.array(px, mask=M)
+    py_mask = ma.array(py, mask=M)
+    # plot vectors
+    lons, lats = np.meshgrid(comp.lon.values, comp.lat.values)
+    ax.quiver(lons, lats, px_mask, py_mask, transform=crs_latlon,
+              pivot='tail',
+              width=0.0030, headwidth=4.1, alpha=1, color='k',
+              scale=40)
+    ax.add_feature(cartopy.feature.LAND, facecolor='white',
+                   edgecolor=color_map)
+    ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5, zorder=17)
+    # ax.add_feature(cartopy.feature.COASTLINE)
+    if contourf:
+        pass
+    else:
+        ocean = cartopy.feature.NaturalEarthFeature('physical', 'ocean',
+                                                    scale='50m',
+                                                    facecolor='white',
+                                                    alpha=1)
+        ax.add_feature(ocean, linewidth=0.2, zorder=15)
+    ax.add_feature(cartopy.feature.BORDERS, linestyle='-', color=color_map)
+    # ax.add_feature(cartopy.feature.RIVERS, edgecolor='skyblue')
+    ax.add_feature(cartopy.feature.STATES)
+    ax.coastlines(color=color_map, linestyle='-', alpha=1)
+    ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-')
+    ax.set_xticks(xticks, crs=crs_latlon)
+    ax.set_yticks(yticks, crs=crs_latlon)
+    lon_formatter = LongitudeFormatter(zero_direction_label=True)
+    lat_formatter = LatitudeFormatter()
+    ax.xaxis.set_major_formatter(lon_formatter)
+    ax.yaxis.set_major_formatter(lat_formatter)
+    ax.gridlines(crs=crs_latlon, linewidth=0.3, linestyle='-', zorder=20)
+    ax.tick_params(labelsize=7)
+    plt.title(title, fontsize=10)
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.close()
+    else:
+        plt.show()
 
 cbar_pp = colors.ListedColormap(['#003C30', '#004C42', '#0C7169',
                                  '#79C8BC', '#B4E2DB',
@@ -140,8 +225,7 @@ cbar_t.set_bad(color='white')
 
 ################################################################################
 files = SelectFiles(data_dir)
-
-#for
+# pp t y hgt850
 for f in files:
     data = xr.open_dataset(f)
     variable = f.split('_')[0].split('/')[-1]
@@ -187,6 +271,70 @@ for f in files:
             cbar = cbar_t
         Plot(data, data.air[0, :, :], scale, save, dpi,
              title, name_fig, out_dir, 'gray', cbar, False, False)
+    elif 'hgt' in variable:
+        try:
+            int(f.split('_')[-1].split('.')[0])
+            # no anom
+            title = 'Temp - ' + FindMonth(f) + '_' + FindYear(f) \
+                    + ' - ' + variable
+            name_fig = 't_' + f.split('_')[1] + '_' + FindMonth(f) + '_' + \
+                       FindYear(f) + '_' + variable
+            scale = np.arange(1200, 1800, 50)
+            cbar = 'Reds'
+        except:
+            title = 'Temp anom. - ' + FindMonth(f) + '_' + FindYear(f)
+            name_fig = 't_anom_' + f.split('_')[1] + '_' + FindMonth(f) + '_' + \
+                       FindYear(f)
+            scale = [-100, -75, -50, -15, -5, 0, 5, 15, 50, 75, 100]
+            cbar = cbar_t
+
+        Plot(data, data.hgt[0, :, :], scale, save, dpi,
+             title, name_fig, out_dir, 'gray', cbar, True, False)
+
+files_viento = files[-12::]
+f = files_viento[1]
+
+f_count=0
+for f in files_viento:
+    if ('u' in f.split('_')[0].split('/')[-1]):
+        u = xr.open_dataset(f)
+
+        checkf2 = True
+        f_count2 = f_count
+        while checkf2:
+            f_count2 += 1
+            try:
+                f2 = files_viento[f_count2]
+            except:
+                f2 = files_viento[-1]
+            if f.split('850_')[-1] in f2:
+                checkf2 = False
+
+        # este if está de demás pero por seguridad
+        if ('v' in f2.split('_')[0].split('/')[-1]):
+            v = xr.open_dataset(f2)
+
+            auxu = u.rename({'uwnd': 'mag'})
+            auxv = v.rename({'vwnd': 'mag'})
+            mag = np.sqrt(auxu ** 2 + auxv ** 2)
+            cbar = 'RdPu'
+
+            try:
+                int(f.split('_')[-1].split('.')[0])
+                scale = np.arange(2, 20, 2)
+            except:
+                scale = np.arange(0, 10, 1)
+
+                pass
+
+            PlotViento(mag, mag.mag[0, :, :], u.uwnd[0, :, :], v.vwnd[0, :, :],
+                      scale,
+                     save, dpi, 'title', 'name_fig', out_dir, 'gray', cbar, True,
+                     False)
+            print(f)
+            print(f2)
+    f_count += 1
+
 ################################################################################
 ################################################################################
 # 2
@@ -596,7 +744,7 @@ jn['tm']=jn['tm'].replace([213.3], 13.3)
 #------------------------------------------------------------------------------#
 # Calcular los percentiles diarios (1, 10, 90, 99) de tx y tm y los
 # percentiles mensuales (95, 99) de la pp (no nula) para el período 1981-2010.
-jn_60_21 = jn.loc[(jn['anio']>=1960)&(jn['anio']<=2021)]
+jn_60_21 = jn.loc[(jn['anio']>=1981)&(jn['anio']<=2010)]
 
 # temp --------------------------#
 for q in [.01, .10, .90, .99]:
@@ -651,185 +799,52 @@ for q in [.95,.99]:
 
 
 # -----------------------------------------------------------------------------#
-i_count_tx = 0
-i_count_tm = 0
-i_count_txm = 0
-i_count_tmx = 0
+def T_ext(mes, diasmes, extremo):
+    aux_mes = jn.loc[jn['mes'] == mes]
 
-for i in range(1960,2022):
-    aux = jn.loc[jn['anio'] == i]
-    tx_c_m = 0
-    tm_c_m = 0
-    pp_c_m = 0
-    tmx_c_m = 0
-    txm_c_m = 0
+    check_count = 0
+    t_count = 0
+    i_count = 0
+    for i in range(1960,2022):
+        aux = aux_mes.loc[jn['anio'] == i]
 
-    for m in [1, 7]:
-        tx_count = 0
-        tm_count = 0
-
-        tmx_count = 0
-        txm_count = 0
-        for d in range(1, 32):
+        for d in range(1, diasmes+1):
             try:
-                aux_d = aux.loc[(aux['mes'] == m) & (aux['dia'] == d)]
+                # Dia d del mes m del año i
+                aux_d = aux.loc[(aux['dia'] == d)]
 
+                # percentil del dia de arriba
                 aux_d_per = perc_t.loc[
-                    (perc_t['mes'] == m) & (perc_t['dia'] == d)]
+                    (perc_t['mes'] == mes) & (perc_t['dia'] == d)]
 
-                if m == 1:
-                    txaux = (aux_d.tx.values[0] >= aux_d_per.tx_99[0]) & \
-                            (aux_d.tm.values[0] >= aux_d_per.tm_9[0])
-
-                    if txaux:
-                        print('calido')
-                        if tx_count == 0:
-                            dtx = aux_d
-                            tx_count = 1
-                        else:
-                            dtx = pd.concat([dtx, aux_d], axis=0)
-
-                    # if tmxaux:
-                    #     if tmx_count == 0:
-                    #         dtmx = aux_d
-                    #         tmx_count = 1
-                    #     else:
-                    #         dtmx = pd.concat([dtmx, aux_d], axis=0)
-
+                if extremo == 'calido':
+                    check = (aux_d.tx.values[0] >= aux_d_per.tx_99[0]) & \
+                            (aux_d.tm.values[0] >= aux_d_per.tm_99[0])
+                elif extremo == 'frio':
+                    check = (aux_d.tx.values[0] <= aux_d_per.tx_1[0]) & \
+                            (aux_d.tm.values[0] <= aux_d_per.tm_01[0])
                 else:
+                    print('ERROR <extremo>')
+                    return
 
-                    tmaux = (aux_d.tm.values[0] <= aux_d_per.tm_01[0]) & \
-                            (aux_d.tx.values[0] <= aux_d_per.tx_1[0])
-
-                    #txmaux = aux_d.tx.values[0] <= aux_d_per.tx_01[0]
-
-                    if tmaux:
-                        print('frio')
-                        tmaux = False
-                        if tm_count == 0:
-                            dtm = aux_d
-                            tm_count = 1
-                        else:
-                            dtm = pd.concat([dtm, aux_d], axis=0)
-
-                    # if txmaux:
-                    #     tmaux = False
-                    #     if txm_count == 0:
-                    #         dtxm2 = aux_d
-                    #         txm_count = 1
-                    #     else:
-                    #         dtxm2 = pd.concat([dtxm2, aux_d], axis=0)
+                if check:
+                    t_count += 1
+                    check_count += 1
+                    if i_count == 0:
+                        t_ext = aux_d
+                        i_count = 1
+                    else:
+                        t_ext = pd.concat([t_ext, aux_d])
 
             except:
+                print('ERROR in dia: ' + str(d), ' año: ' + str(i))
                 pass
 
-        try:
-            if tx_c_m == 0:
-                dtxm = dtx
-                tx_c_m = 1
-                del dtx
-            else:
-                dtxm = pd.concat([dtxm, dtx], axis=0)
-                del dtx
-        except:
-            pass
-
-        # try:
-        #     if tmx_c_m == 0:
-        #         dtmxm = dtmx
-        #         tmx_c_m = 1
-        #         del dtmx
-        #     else:
-        #         dtmxm = pd.concat([dtmxm, dtmx], axis=0)
-        #         del dtmx
-        # except:
-        #     pass
-
-        try:
-            if tm_c_m == 0:
-                dtmm = dtm
-                tm_c_m = 1
-                del dtm
-            else:
-                dtmm = pd.concat([dtmm, dtm], axis=0)
-                del dtm
-        except:
-            pass
-
-        # try:
-        #     if txm_c_m == 0:
-        #         dtxmm = dtxm2
-        #         txm_c_m = 1
-        #         del dtxm2
-        #     else:
-        #         dtxmm = pd.concat([dtxmm, dtxm2], axis=0)
-        #         del dtxm2
-        # except:
-        #     pass
-
-    if i_count_tx == 0:
-        try:
-            txene = dtxm
-            del dtxm
-            i_count_tx = 1
-        except:
-            pass
-
-    # if i_count_tmx == 0:
-    #     try:
-    #         tmene = dtmxm
-    #         del dtmxm
-    #         i_count_tmx = 1
-    #     except:
-    #         pass
-    if i_count_tm == 0:
-        try:
-            tmjul = dtmm
-            del dtmm
-            i_count_tm = 1
-        except:
-            pass
-    # if i_count_txm == 0:
-    #     try:
-    #         txjul = dtxmm
-    #         del dtxmm
-    #         i_count_txm = 1
-    #     except:
-    #         pass
-
-
-    else:
-        try:
-            txene = pd.concat([txene, dtxm], axis=0)
-            del dtxm
-        except:
-            pass
-
-        # try:
-        #     tmene = pd.concat([tmene, dtmxm], axis=0)
-        #     del dtmxm
-        # except:
-        #     pass
-
-        try:
-            tmjul = pd.concat([tmjul, dtmm], axis=0)
-            del dtmm
-        except:
-            pass
-
-        # try:
-        #     txjul = pd.concat([txjul, dtxmm], axis=0)
-        #     del dtxmm
-        # except:
-        #     pass
-
-txene = txene.sort_values('tx', ascending=False).head(20)
-#tmene = tmene.sort_values('tm', ascending=False).head(20)
-
-tmjul = tmjul.sort_values('tm', ascending=True).head(20)
-#txjul = txjul.sort_values('tx', ascending=True).head(20)
+    print('Dias extremos: ' + str(t_count))
+    return t_ext
 
 def PPext(meses):
+    ppaux_count = 0
     i_count = 0
     for i in range(1960, 2022):
         aux = jn.loc[jn['anio'] == i]
@@ -847,6 +862,7 @@ def PPext(meses):
                     ppaux = aux_d.pp.values[0] >= aux_d_per.pp_99[0]
 
                     if ppaux:
+                        ppaux_count += 1
                         if pp_count == 0:
                             dpp = aux_d
                             pp_count = 1
@@ -878,12 +894,20 @@ def PPext(meses):
                 del dppm
 
         except:
+            print('Error en ' + str(d) + '/' + str(m) + '/' + str(i))
             pass
 
+    print('Dias extremos: ' + str(ppaux_count))
     return ppmes
 
-ppjj= PPext([6,7,8])
-ppma= PPext([3,4])
+txene = T_ext(1,31, 'calido')
+txene = txene.sort_values('tx', ascending=False).head(20)
+
+tmjul = T_ext(7,31, 'frio')
+tmjul = tmjul.sort_values('tm', ascending=True).head(20)
+
+ppjj = PPext([6,7,8])
+ppma = PPext([3,4])
 
 np.savetxt(out_dir + 'txene.txt', txene, fmt='%s')
 np.savetxt(out_dir + 'tmjul.txt', tmjul, fmt='%s')
