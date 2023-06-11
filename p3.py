@@ -121,7 +121,7 @@ def Plot(comp, comp_var, levels, save, dpi, title, name_fig, out_dir,
         plt.show()
 
 def PlotViento(comp, comp_var, px, py, levels, save, dpi, title, name_fig,
-               out_dir, color_map, cmap, contourf, sa):
+               out_dir, color_map, cmap, contourf, sa, scale_waf):
 
     import matplotlib.pyplot as plt
     import cartopy.feature
@@ -170,7 +170,7 @@ def PlotViento(comp, comp_var, px, py, levels, save, dpi, title, name_fig,
     ax.quiver(lons, lats, px_mask, py_mask, transform=crs_latlon,
               pivot='tail',
               width=0.0030, headwidth=4.1, alpha=1, color='k',
-              scale=40)
+              scale=scale_waf)
     ax.add_feature(cartopy.feature.LAND, facecolor='white',
                    edgecolor=color_map)
     ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5, zorder=17)
@@ -291,9 +291,8 @@ for f in files:
         Plot(data, data.hgt[0, :, :], scale, save, dpi,
              title, name_fig, out_dir, 'gray', cbar, True, False)
 
-files_viento = files[-12::]
-f = files_viento[1]
 
+files_viento = files[-12::]
 f_count=0
 for f in files_viento:
     if ('u' in f.split('_')[0].split('/')[-1]):
@@ -330,7 +329,7 @@ for f in files_viento:
             PlotViento(mag, mag.mag[0, :, :], u.uwnd[0, :, :], v.vwnd[0, :, :],
                       scale,
                      save, dpi, 'title', 'name_fig', out_dir, 'gray', cbar, True,
-                     False)
+                     False, 40)
             print(f)
             print(f2)
     f_count += 1
@@ -907,6 +906,7 @@ tmjul = T_ext(7,31, 'frio')
 tmjul = tmjul.sort_values('tm', ascending=True).head(20)
 
 ppjj = PPext([6,7,8])
+ppjj = ppjj.sort_values('pp', ascending=False).head(20)
 ppma = PPext([3,4])
 
 np.savetxt(out_dir + 'txene.txt', txene, fmt='%s')
@@ -965,17 +965,71 @@ for f in files:
             name_fig = 'hgt_' + str(level) + '_' + f.split('_')[-2] \
                        + '_' + var_related
             if 'anom' in f.split('_')[-1]:
-                titulo = "Q' - 850 hPa"
+                titulo = "q' [Kg/Kg] - 850 hPa"
                 scale = [-0.004, -.003, -.002, -.001, -.0005, 0,
                          .0005, .001, .002, .003, .004]
                 cbar = cbar_pp
             else:
-                titulo = "Q mean - 850 hPa"
+                titulo = "q [Kg/Kg] - 850 hPa"
                 scale = np.arange(0,.016,.002)
                 cbar = 'YlGnBu'
 
             Plot(data, data.shum[0, :, :], scale, save, dpi,
                  titulo, name_fig, out_dir, 'gray', cbar, True, True)
+
+# seleccion files viento
+files_viento = []
+for f in files:
+    if ('u850' in f) or ('v850' in f):
+        files_viento.append(f)
+
+f_count=0
+for f in files_viento:
+    vname, level, type = f.split('/')[-1].split('_')
+
+    if 'u' in level:
+        u = xr.open_dataset(f)
+
+
+        checkf2=True
+        f_count2=f_count
+        while checkf2:
+            f_count2 += 1
+            try:
+                f2 = files_viento[f_count2]
+            except:
+                f2 = files_viento[-1]
+
+            f2_name = f2.split('/')[-1]
+            if 'v' in f2_name:
+                if (vname in f2_name) & (type in f2_name):
+                    checkf2 = False
+
+        # este if está de demás pero por seguridad
+        f2_name = f2.split('/')[-1]
+        if 'v' in f2_name:
+            if (vname in f2_name) & (type in f2_name):
+                v = xr.open_dataset(f2)
+
+                auxu = u.rename({'uwnd': 'mag'})
+                auxv = v.rename({'vwnd': 'mag'})
+                mag = np.sqrt(auxu ** 2 + auxv ** 2)
+                cbar = 'RdPu'
+
+                if type == 'anom.nc':
+                    scale = np.arange(0, 16, 2)
+                else:
+                    scale = np.arange(0, 20, 2)
+
+            PlotViento(mag, mag.mag[0, :, :], u.uwnd[0, :, :], v.vwnd[0, :, :],
+                      scale,
+                     save, dpi, 'title', 'name_fig', out_dir, 'gray', cbar, True,
+                     False, 50)
+            print(f)
+            print(f2)
+
+    f_count += 1
+
 ################################################################################
 # viento si hay tiempo.
 ################################################################################
