@@ -21,13 +21,18 @@ import warnings
 warnings.filterwarnings("ignore")
 ################################################################################
 data_dir = '/home/luciano.andrian/doc/climaext/p3/ncfiles/'
-out_dir = '/home/luciano.andrian/doc/climaext/p3/salidas/'
 data_dir2 = '/home/luciano.andrian/doc/climaext/p2/data/'
 data_dir3 = '/home/luciano.andrian/doc/climaext/p3/ncfiles2/'
 data_dir4 = '/home/luciano.andrian/doc/climaext/p3/ncfiles_km/'
 
-save = False
-dpi = 50
+out_dir = '/home/luciano.andrian/doc/climaext/p3/salidas/'
+out_dir1 = '/home/luciano.andrian/doc/climaext/p3/salidas/e1/'
+out_dir2 = '/home/luciano.andrian/doc/climaext/p3/salidas/e3/'
+out_dir3 = '/home/luciano.andrian/doc/climaext/p3/salidas/e4/'
+
+
+save = True
+dpi = 300
 ################################################################################
 def SelectFiles(dir):
     files =  glob.glob(dir +'*.nc')
@@ -233,7 +238,7 @@ for f in files:
         try:
             int(f.split('_')[-1].split('.')[0])
             # no anom
-            title = 'PP - ' + FindMonth(f) + '_' + FindYear(
+            title = 'PP media - ' + FindMonth(f) + '_' + FindYear(
                 f) + ' - ' + variable
             name_fig = 'pp_' + FindMonth(f) + '_' + FindYear(f) + '_' + variable
             scale = np.arange(0, 450, 50)
@@ -251,45 +256,45 @@ for f in files:
             data *= (365 / 12)
 
         Plot(data, data.precip[0, :, :], scale, save, dpi,
-             title, name_fig, out_dir, 'gray', cbar, False, False)
+             title, name_fig, out_dir1, 'gray', cbar, False, False)
 
     elif variable == 't':
         try:
             int(f.split('_')[-1].split('.')[0])
             # no anom
-            title = 'Temp - ' + FindMonth(f) + '_' + FindYear(f) \
+            title = 'Temp media - [ºC]' + FindMonth(f) + '_' + FindYear(f) \
                     + ' - ' + variable
             name_fig = 't_' + f.split('_')[1] + '_' + FindMonth(f) + '_' + \
                        FindYear(f) + '_' + variable
             scale = np.arange(-5, 40, 5)
             cbar = 'Spectral_r'
         except:
-            title = 'Temp anom. - ' + FindMonth(f) + '_' + FindYear(f)
+            title = 'Temp anom. [ºC] - ' + FindMonth(f) + '_' + FindYear(f)
             name_fig = 't_anom_' + f.split('_')[1] + '_' + FindMonth(f) + '_' +\
                        FindYear(f)
             scale = [-5,-2,-1,-.5,0,.5,1,2,5]
             cbar = cbar_t
         Plot(data, data.air[0, :, :], scale, save, dpi,
-             title, name_fig, out_dir, 'gray', cbar, False, False)
+             title, name_fig, out_dir1, 'gray', cbar, False, False)
     elif 'hgt' in variable:
         try:
             int(f.split('_')[-1].split('.')[0])
             # no anom
-            title = 'Temp - ' + FindMonth(f) + '_' + FindYear(f) \
+            title = 'HGT 850hPa medio ' + FindMonth(f) + '_' + FindYear(f) \
                     + ' - ' + variable
             name_fig = 't_' + f.split('_')[1] + '_' + FindMonth(f) + '_' + \
                        FindYear(f) + '_' + variable
             scale = np.arange(1200, 1800, 50)
             cbar = 'Reds'
         except:
-            title = 'Temp anom. - ' + FindMonth(f) + '_' + FindYear(f)
+            title = 'HGT 850hPa anom. - ' + FindMonth(f) + '_' + FindYear(f)
             name_fig = 't_anom_' + f.split('_')[1] + '_' + FindMonth(f) + '_' + \
                        FindYear(f)
             scale = [-100, -75, -50, -15, -5, 0, 5, 15, 50, 75, 100]
             cbar = cbar_t
 
         Plot(data, data.hgt[0, :, :], scale, save, dpi,
-             title, name_fig, out_dir, 'gray', cbar, True, False)
+             title, name_fig, out_dir1, 'gray', cbar, True, False)
 
 
 files_viento = files[-12::]
@@ -321,14 +326,21 @@ for f in files_viento:
             try:
                 int(f.split('_')[-1].split('.')[0])
                 scale = np.arange(2, 20, 2)
+                title = 'Viento medio  850hPa - ' + f.split('_')[-2] + '-' +\
+                        f.split('_')[-1].split('.')[0]
+                name_fig = 'viento850_mean_' + f.split('_')[-2] + '_' +\
+                        f.split('_')[-1].split('.')[0]
             except:
                 scale = np.arange(0, 10, 1)
-
+                title = 'Viento anom.  850hPa - ' + f.split('_')[-3] + '-' +\
+                        f.split('_')[-1].split('.')[0]
+                name_fig = 'viento850_anom_' + f.split('_')[-3] + '_' +\
+                        f.split('_')[-1].split('.')[0]
                 pass
 
             PlotViento(mag, mag.mag[0, :, :], u.uwnd[0, :, :], v.vwnd[0, :, :],
                       scale,
-                     save, dpi, 'title', 'name_fig', out_dir, 'gray', cbar, True,
+                     save, dpi, title, name_fig, out_dir1, 'gray', cbar, True,
                      False, 40)
             print(f)
             print(f2)
@@ -380,281 +392,6 @@ def checkEx(out, media, mes, smnexmax, smnexmin, variable):
             return out
         else:
             return []
-
-def PeriodosTemp(df, perc_t):
-    def checkEx2(data):
-        try:
-            len(data)
-            return data
-        except:
-            d = {'estacion': [0], 'dia': [0], 'mes': [0], 'anio': [0],
-                 'tx': [0], 'tm': [0], 'pp': [0], 'ppc': [0], 'h': [0],
-                 'dv': [0], 'vx': [0]}
-            d = pd.DataFrame(d)
-            return d
-
-
-    tm10_count = 0
-    tm01_count = 0
-    tx90_count = 0
-    tx99_count = 0
-    tm90_count = 0
-    tm99_count = 0
-    for mes in range(1, 13):
-        mc = None
-        ec = None
-        mf = None
-        ef = None
-        for dia in range(1, 32):
-            if (mes == 2) and (dia == 29):
-                pass
-            else:
-                dia_aux = df.loc[(df['mes'] == mes) & (df['dia'] == dia)]
-
-                if len(dia_aux) == 0:
-                    pass
-                else:
-                    aux = perc_t.loc[
-                        (perc_t['dia'] == dia) & (perc_t['mes'] == mes)]
-
-                    tx90 = aux.tx_9.values[0]
-                    tx99 = aux.tx_99.values[0]
-                    tm90 = aux.tm_9.values[0]
-                    tm99 = aux.tm_99.values[0]
-                    tm10 = aux.tm_1.values[0]
-                    tm01 = aux.tm_01.values[0]
-
-                    # muy calidos
-                    if dia_aux.tx.values[0] > tx90:
-                        if tx90_count == 0:
-                            mc = dia_aux
-                            tx90_count = 1
-                        else:
-                            mc = pd.concat([mc, dia_aux], axis=0)
-
-                        # extremadamente calidos
-                        if dia_aux.tx.values[0] > tx99:
-                            if tx99_count == 0:
-                                ec = dia_aux
-                                tx99_count = 1
-                            else:
-                                ec = pd.concat([ec, dia_aux], axis=0)
-
-                    # muy calidos desde tm
-                    if dia_aux.tm.values[0] > tm90:
-                        if tm90_count == 0:
-                            mc_tm = dia_aux
-                            tm90_count = 1
-                        else:
-                            mc_tm = pd.concat([mc_tm, dia_aux], axis=0)
-
-                        # extremadamente calidos
-                        if dia_aux.tm.values[0] > tm99:
-                            if tm99_count == 0:
-                                ec_tm = dia_aux
-                                tm99_count = 1
-                            else:
-                                ec_tm = pd.concat([ec_tm, dia_aux], axis=0)
-
-                    # muy frios
-                    if dia_aux.tm.values[0] < tm10:
-                        if tm10_count == 0:
-                            mf = dia_aux
-                            tm10_count = 1
-                        else:
-                            mf = pd.concat([mf, dia_aux], axis=0)
-
-                        # extremadamente frio
-                        if dia_aux.tm.values[0] < tm01:
-                            if tm01_count == 0:
-                                ef = dia_aux
-                                tm01_count = 1
-                            else:
-                                ef = pd.concat([ef, dia_aux], axis=0)
-        if mes == 1:
-            meses_mc = checkEx2(mc)
-            meses_ec = checkEx2(ec)
-            meses_mc_tm = checkEx2(mc_tm)
-            meses_ec_tm = checkEx2(ec_tm)
-            meses_mf = checkEx2(mf)
-            meses_ef = checkEx2(ef)
-        else:
-            meses_mc = pd.concat([meses_mc, checkEx2(mc)], axis=0)
-            meses_ec = pd.concat([meses_ec, checkEx2(ec)], axis=0)
-            meses_mc_tm = pd.concat([meses_mc_tm, checkEx2(mc_tm)], axis=0)
-            meses_ec_tm = pd.concat([meses_ec_tm, checkEx2(ec_tm)], axis=0)
-            meses_mf = pd.concat([meses_mf, checkEx2(mf)], axis=0)
-            meses_ef = pd.concat([meses_ef, checkEx2(ef)], axis=0)
-
-    return meses_mc, meses_ec, meses_mc_tm, meses_ec_tm, meses_mf, meses_ef
-
-def DetecPeriodsx3(df):
-    from itertools import groupby
-    from operator import itemgetter
-    check = True
-    check_first = False
-    for mes in range(1, 13):
-        aux = df.loc[df['mes'] == mes]
-        per_f = []
-        aux_mes = []
-        if len(aux) >= 3:
-
-            for k, g in groupby(enumerate(aux['dia'].values),
-                                lambda ix: ix[0] - ix[1]):
-                aux_mes.append(list(map(itemgetter(1), g)))
-            periodos = [len(l) >= 3 for l in aux_mes]
-
-            if True in periodos:
-                check_first = True
-                for l in range(0, len(periodos)):
-                    if periodos[l]:
-                        per_f.append(aux_mes[l])
-                # ESTO PUEDE Q NO HAGA FALTA
-                for l in range(0, len(per_f)):
-                    if l == 0:
-                        mes_per = aux.loc[aux['dia'].isin(per_f[l])]
-                    else:
-                        mes_per = pd.concat([mes_per,
-                                             aux.loc[
-                                                 aux['dia'].isin(per_f[l])]],
-                                            axis=0)
-        try:
-            len(mes_per)
-            if check & check_first:
-                per_meses = mes_per
-                check = False
-            else:
-                per_meses = pd.concat([per_meses, mes_per], axis=0)
-
-            del mes_per
-        except:
-            pass
-    try:
-        return per_meses
-    except:
-        return []
-
-def plotperiods(anio, perc, titulo, name_fig, dpi, save,
-                anioper_mc, anioper_ec, anioper_mc_tm, anioper_ec_tm,
-                anioper_mf, anioper_ef, xlabel, ylabel):
-    fig = plt.figure(figsize=(10, 5), dpi=dpi)
-    ax = fig.add_subplot(111)
-
-    plt.fill_between(x=perc['date'].values,
-                     y1=perc['tx_99'].values, y2=perc['tm_01'].values,
-                     color='#B5B5B5', alpha=1, label='p01-p99', linewidth=0.0)
-
-    plt.fill_between(x=perc['date'].values,
-                     y1=perc['tx_9'].values, y2=perc['tm_1'].values,
-                     color='#F9EEEE', alpha=1, label='p10-p90', linewidth=0.0)
-
-    ax.plot(anio['date'].values, anio['tx'].values, label='Tx', color='k',
-            linewidth=1)
-    ax.plot(anio['date'].values, anio['tm'].values, label='Tn',
-            color='blue', linewidth=1)
-
-    try:
-        ax.scatter(anioper_mc['date'].values, anioper_mc['tx'].values,
-                   label='Muy Calido',
-                   color='magenta', linewidth=3)
-    except:
-        pass
-
-    try:
-        ax.scatter(anioper_ec['date'].values, anioper_ec['tx'].values,
-                   label='Ext. Calido',
-                   color='red', linewidth=3)
-    except:
-        pass
-
-    try:
-        ax.scatter(anioper_mc_tm['date'].values, anioper_mc_tm['tm'].values,
-                   label='Muy Calido Tn',
-                   color='coral', linewidth=3)
-    except:
-        pass
-
-    try:
-        ax.scatter(anioper_ec_tm['date'].values, anioper_ec_tm['tm'].values,
-                   label='Ext. Calido Tn',
-                   color='orange', linewidth=3)
-    except:
-        pass
-
-    try:
-        ax.scatter(anioper_mf['date'].values, anioper_mf['tm'].values,
-                   label='Muy Frio',
-                   color='k', linewidth=3)
-    except:
-        pass
-
-    try:
-        ax.scatter(anioper_ef['date'].values, anioper_ef['tm'].values,
-                   label='Ext. Frio',
-                   color='purple', linewidth=3)
-    except:
-        pass
-
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-    ax.set_title(titulo)
-    ax.set_ylabel(xlabel)
-    ax.set_xlabel(ylabel)
-    ax.grid(alpha=0.5)
-    plt.legend()
-    plt.tight_layout()
-    if save:
-        plt.savefig(out_dir + name_fig +'.jpg')
-        plt.close('all')
-    else:
-        plt.show()
-
-def plotItem3c(anio, titulo, dpi, save, per_pp, anioacum,
-               xlabel, ylabel, name_fig):
-    fig = plt.figure(figsize=(10, 5), dpi=dpi)
-    ax = fig.add_subplot(111)
-
-    ax.bar(anio.dj, anio.pp, label='pp diaria', color='dodgerblue', width=2)
-
-    # percentiles 95 y 99
-    diasmeses = np.cumsum([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
-
-    for q, c in zip(['pp_95', 'pp_99'], ['orange', 'firebrick']):
-        first = True
-        for dm in range(0, 12):
-            if first:
-                first = False
-                ax.hlines(y=per_pp[q].values[dm], xmin=0, xmax=diasmeses[dm],
-                          label='p' + q.split('_')[1], color=c, linewidth=2)
-            else:
-                ax.hlines(y=per_pp[q].values[dm], xmin=diasmeses[dm - 1],
-                          xmax=diasmeses[dm], color=c, linewidth=2)
-
-    first = True
-    for dm in range(0, 12):
-        if first:
-            first = False
-            ax.hlines(y=anioacum.ppa.values[dm], xmin=0, xmax=diasmeses[dm],
-                      label='media \n mensual', color='indigo', linewidth=2)
-        else:
-            ax.hlines(y=anioacum.ppa.values[dm], xmin=diasmeses[dm - 1],
-                      xmax=diasmeses[dm], color='indigo', linewidth=2)
-
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-    ax.set_title(titulo)
-    ax.set_ylabel(xlabel)
-    ax.set_xlabel(ylabel)
-    ax.grid(alpha=0.5)
-    plt.legend()
-    plt.tight_layout()
-
-    if save:
-        plt.savefig(out_dir + name_fig +'.jpg')
-        print('Save')
-        plt.close('all')
-    else:
-        plt.show()
 
 def adddate(df2, anioaux=None):
     try:
@@ -916,9 +653,6 @@ np.savetxt(out_dir + 'ppma.txt', ppma, fmt='%s')
 
 ################################################################################
 # 3 Ploteos hgt y q
-scales_hgt = []
-scale_q = []
-
 files = SelectFiles(data_dir3)
 for f in files:
     data = xr.open_dataset(f)
@@ -931,7 +665,9 @@ for f in files:
         cbar = cbar_t
 
         if 'anom' in f.split('_')[-1]:
-            title = "Z' - " + str(level) + 'hPa'
+            title = 'Hgt ' + str(level) + 'hPa' + ' anom'
+            name_fig = 'hgt_anom_' + str(level) + '_' + f.split('_')[-2] \
+                       + '_' + var_related
             if level == 1000:
                 scale = [-100, -75,-50, -25, -5, 0,
                          5, 25,50,  75,100]
@@ -942,7 +678,9 @@ for f in files:
                 scale = [-200, -150, -100, -50, -10,
                          0, 10, 50, 100, 150, 200]
         else:
-            title = "Z mean - " + str(level) + 'hPa'
+            title = 'Hgt ' + str(level) + 'hPa' + ' medio'
+            name_fig = 'hgt_' + str(level) + '_' + f.split('_')[-2] \
+                       + '_' + var_related
             if level == 1000:
                 scale = np.arange(-450,475,75)
                 scale = [-450, -300, -200, -150,  -50,
@@ -957,25 +695,27 @@ for f in files:
                 cbar = 'Reds'
 
         Plot(data, data.hgt[0, :, :], scale, save, dpi,
-             title, name_fig, out_dir, 'gray', cbar, True, True)
+             title, name_fig, out_dir2, 'gray', cbar, True, True)
 
     except:
 
         if 'q' in f.split('_')[-2]:
-            name_fig = 'hgt_' + str(level) + '_' + f.split('_')[-2] \
-                       + '_' + var_related
             if 'anom' in f.split('_')[-1]:
                 titulo = "q' [Kg/Kg] - 850 hPa"
+                name_fig = 'q_850_anom_' + f.split('_')[-2] \
+                           + '_' + var_related
                 scale = [-0.004, -.003, -.002, -.001, -.0005, 0,
                          .0005, .001, .002, .003, .004]
                 cbar = cbar_pp
             else:
                 titulo = "q [Kg/Kg] - 850 hPa"
+                name_fig = 'q_850_' + f.split('_')[-2] \
+                           + '_' + var_related
                 scale = np.arange(0,.016,.002)
                 cbar = 'YlGnBu'
 
             Plot(data, data.shum[0, :, :], scale, save, dpi,
-                 titulo, name_fig, out_dir, 'gray', cbar, True, True)
+                 titulo, name_fig, out_dir2, 'gray', cbar, True, True)
 
 # seleccion files viento
 files_viento = []
@@ -1018,13 +758,17 @@ for f in files_viento:
 
                 if type == 'anom.nc':
                     scale = np.arange(0, 16, 2)
+                    title = 'Viento ' + str(level) + 'hPa' + ' anom.'
+                    name_fig = 'Viento ' + str(level) + 'hPa_anom_' + vname
                 else:
+                    title = 'Viento ' + str(level) + 'hPa' + ' medio'
+                    name_fig = 'Viento ' + str(level) + 'hPa_medio_' + vname
                     scale = np.arange(0, 20, 2)
 
             PlotViento(mag, mag.mag[0, :, :], u.uwnd[0, :, :], v.vwnd[0, :, :],
                       scale,
-                     save, dpi, 'title', 'name_fig', out_dir, 'gray', cbar, True,
-                     False, 50)
+                     save, dpi, title, name_fig, out_dir2, 'gray', cbar, True,
+                     True, 70)
             print(f)
             print(f2)
 
@@ -1059,7 +803,7 @@ def SilhScore(X, title='title', name_fig='fig', save=False):
     plt.title(title)
 
     if save:
-        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.savefig(out_dir3 + name_fig + '.jpg')
         plt.close()
     else:
         plt.show()
@@ -1080,7 +824,7 @@ def SSEScore(X, title='title', name_fig='fig', save=False):
     plt.title(title)
 
     if save:
-        plt.savefig(out_dir + name_fig + '.jpg')
+        plt.savefig(out_dir3 + name_fig + '.jpg')
         plt.close()
     else:
         plt.show()
@@ -1182,7 +926,8 @@ for a, m, nc in zip([2020, 2021], [3,4], [8,6]):
     pos = fig.add_axes([0.935, 0.2, 0.012, 0.6])
     cbar = fig.colorbar(im, cax=pos, pad=0.1)
     if save:
-        plt.savefig(out_dir + 'cluster_' + str(a) + '_' + str(m) + '.jpg', dpi=300)
+        plt.savefig(out_dir3 + 'cluster_' + str(a) + '_' + str(m) + '.jpg',
+                    dpi=300)
         plt.close()
     else:
         plt.show()
@@ -1193,9 +938,11 @@ for a, m, nc in zip([2020, 2021], [3,4], [8,6]):
     plt.title('Evolución clusters')
     ax.set_xlabel('dias')
     ax.set_ylabel('Cluster')
+    ax.set_xticks(np.arange(1,len(pred)+1))
+    plt.grid()
     if save:
         plt.savefig(
-            out_dir + 'evocluster_' + str(a) + '_' + str(m) + '.jpg', dpi=300)
+            out_dir3 + 'evocluster_' + str(a) + '_' + str(m) + '.jpg', dpi=300)
         plt.close()
     else:
         plt.show()
